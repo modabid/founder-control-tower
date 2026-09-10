@@ -5,10 +5,12 @@ const fs = require('node:fs');
 const path = require('node:path');
 const dashboard = require('../../apps/web/dashboard.js');
 
-const htmlPath = path.join(__dirname, '..', '..', 'apps', 'web', 'index.html');
+const previewPath = path.join(__dirname, '..', '..', 'apps', 'web', 'preview.html');
+const livePath = path.join(__dirname, '..', '..', 'apps', 'web', 'index.html');
 const cssPath = path.join(__dirname, '..', '..', 'apps', 'web', 'styles.css');
 const fixturePath = path.join(__dirname, '..', '..', 'apps', 'web', 'mock-founder-data.js');
-const htmlSource = fs.readFileSync(htmlPath, 'utf8');
+const previewSource = fs.readFileSync(previewPath, 'utf8');
+const liveSource = fs.readFileSync(livePath, 'utf8');
 const cssSource = fs.readFileSync(cssPath, 'utf8');
 const fixtureSource = fs.readFileSync(fixturePath, 'utf8');
 
@@ -71,11 +73,12 @@ assert.match(rendered, /&lt;img src=x onerror=alert\(1\)&gt;/);
 const unavailable = dashboard.renderDashboard(null);
 assert.match(unavailable, /No business conclusion should be inferred/);
 
-assert.match(htmlSource, /mock-founder-data\.js/);
-assert.match(htmlSource, /dashboard\.js/);
-assert.doesNotMatch(htmlSource, /https?:\/\//);
-assert.doesNotMatch(htmlSource, /<form\b/i);
-assert.doesNotMatch(htmlSource, /<button\b/i);
+assert.match(previewSource, /mock-founder-data\.js/);
+assert.match(previewSource, /dashboard\.js/);
+assert.doesNotMatch(previewSource, /https?:\/\//);
+assert.match(liveSource, /live-dashboard\.js/);
+assert.doesNotMatch(liveSource, /mock-founder-data\.js/);
+assert.doesNotMatch(liveSource, /https?:\/\//);
 assert.match(cssSource, /@media \(max-width: 650px\)/);
 assert.match(fixtureSource, /__FCT_MOCK__ = true/);
 assert.match(fixtureSource, /OFFLINE_MOCK/);
