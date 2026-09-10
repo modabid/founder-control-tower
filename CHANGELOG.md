@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-09-10 — Phase 3 Read-Only Sheet / Founder API V1
+
+### Added
+
+- Strict read-only Google Sheet matrix/record adapter under `packages/data` with verified live source-range contracts.
+- GET-only Google Sheets REST reader with an injected server-side access-token provider and no Sheet mutation methods.
+- Deterministic founder read model covering current-month P&L, cash/receivable semantics, Meta reconciliation, fixed-cost baseline, pending approvals and dynamic stock risk.
+- Explicit data-quality flags for missing TikTok spend, Meta allocation/cutoff mismatch, Paid-with-receivable anomalies, payroll evidence gaps, missing subscription costs, non-AED OPEX and stock-velocity mismatches.
+- Authenticated framework-neutral founder API contract that rejects non-GET methods, fails closed before data reads when unauthorized, disables caching and hides provider/internal errors.
+- Zero-paid-API fixtures/regression tests for the Sheet reader, read model and API boundary.
+- `docs/READ_ONLY_SHEET_API.md` including the rule that future web runtime credentials must be dedicated server-only read credentials; the clasp deployment credential must not be reused by the application.
+
+### Deployment Boundary
+
+- No web/API production endpoint is deployed by this work.
+- No workbook write, ACTION_QUEUE mutation, AI call, external business action or paid infrastructure is introduced.
+- Production web/API activation remains a separate founder Yes/No gate.
+
 ## 2026-09-10 — Phase 3 Portable Domain Core V1
 
 ### Added
