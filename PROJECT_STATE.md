@@ -92,27 +92,17 @@ The Apps Script daily-trigger installer exists in code, but the remote Apps Scri
 
 The founder-approved daily brief is active through ChatGPT automation at **08:15 Asia/Dubai**. It is analysis/reporting only and may not execute ads, payments, courier/order changes, inventory commitments, messages, purchases, deployments or other governed external actions.
 
-## Phase 3 — Portable Domain / Data Layer
+## Phase 3 — Portable Domain / Data / Web Layer
 
 ### Portable Domain Core V1 — MERGED
 
 Merged to `main` on 2026-09-10 (merge SHA `9b046ef599b6aade4eb39401896e196294f1317d`).
 
-`packages/domain/src/core.ts` now carries portable deterministic implementations for:
+`packages/domain/src/core.ts` carries portable deterministic implementations for terminal delivery success, Delivered/Paid semantics, active-channel contribution completeness and the TikTok hard block, Operating Profit after complete Real Contribution, inventory velocity/stock days/dynamic stock gates, Last Mile `>=70%` scale gate and fail-closed numeric validation.
 
-- terminal delivery success;
-- Delivered/Paid semantics;
-- active-channel contribution completeness and TikTok hard block;
-- Operating Profit after complete Real Contribution;
-- inventory velocity, physical stock days and dynamic stock gates;
-- Last Mile `>=70%` scale gate;
-- fail-closed deterministic numeric validation.
+### Read-Only Sheet / Founder API V1 — MERGED
 
-No Google/provider/UI/database/execution dependency belongs in the domain package.
-
-### Read-Only Sheet / Founder API V1 — IN DEVELOPMENT, CI GREEN
-
-Branch: `phase3/read-only-sheet-api`
+Merged to `main` on 2026-09-10 (merge SHA `707ff8e4c967bdbb3e9f22ae178147a5696bb75a`).
 
 Implemented and regression-tested:
 
@@ -120,40 +110,43 @@ Implemented and regression-tested:
 - GET-only Google Sheets REST reader with injected server-only token provider;
 - verified live source contracts for `DAILY_PNL`, `ORDERS_MASTER`, `META_SPEND_LIVE`, `PAYROLL_LEDGER`, `OPEX_CONTROL`, `SUBSCRIPTIONS_CONTROL`, `ACTION_QUEUE` and `STOCK_INTELLIGENCE`;
 - deterministic founder read model for MTD economics, cash/receivable semantics, Meta reconciliation, fixed-cost baseline, pending approvals and stock risk;
-- explicit data-quality flags rather than treating an empty generic quality table as clean;
+- explicit data-quality flags;
 - authenticated framework-neutral founder API that is GET-only, no-store, fail-closed and provider-error-redacted;
-- zero workbook writes, zero AI calls and zero external actions in this layer;
+- zero workbook writes, zero AI calls and zero external actions;
 - zero-paid-API fixture regression tests.
 
-See `docs/READ_ONLY_SHEET_API.md`.
+### Founder Web Dashboard Shell V1 — IN REVIEW
 
-### Credential Boundary for Future Web Runtime
+Branch: `phase3/web-dashboard-shell`
+
+Implemented and CI-tested:
+
+- responsive read-only founder dashboard shell;
+- P&L, delivery, courier receivable, controls, pending approvals and stock-risk surfaces;
+- explicit offline/mock mode banner;
+- fail-closed rendering fallback;
+- no duplicated deterministic formulas in UI;
+- no live Google credential, workbook write, approval mutation, AI call or external executor.
+
+The founder has approved proceeding to the controlled live web integration/deployment stage. Before production activation the live server path must still use a dedicated server-only Google read credential and pass parity validation against the deterministic workbook/read model.
+
+## Credential Boundary for Web Runtime
 
 A production web/API deployment must use a **dedicated server-only Google read credential/token provider** with minimum practical read scope. The clasp deployment credential must not be reused. No browser/client receives Google access or refresh tokens.
-
-No live web/API endpoint or paid infrastructure has been provisioned yet.
 
 ## Founder Approval Model
 
 Technical development, deterministic/offline tests, CI fixes, docs, PRs, internal merges, cached replay and read-only inspection proceed without founder interruption.
 
-Founder Yes/No is required before:
-
-- production deploy/redeploy;
-- paid infrastructure or material new recurring cost;
-- ads or campaign changes;
-- payments/refunds/money movement;
-- supplier/customer/courier communications;
-- order/routing/courier status mutation;
-- inventory purchase/transfer/adjustment/commitment;
-- booking/purchase/deployment or another externally effective action.
+Founder Yes/No is required before production deploy/redeploy, paid infrastructure or externally effective actions. Founder approval to proceed with the live web deployment stage was received after the offline dashboard shell was validated.
 
 ## Next Workstream
 
-1. finalize and merge the Phase-3 read-only Sheet/API branch after CI and documentation checks;
-2. build the web founder dashboard shell against the read-model contract using mock/offline data first;
-3. add secure server authentication and a server-side Google read-token adapter;
-4. validate dashboard/read-model parity against current deterministic workbook outputs;
-5. only then request founder Yes/No for any live Vercel/web API deployment or paid infrastructure;
-6. migrate additional deterministic calculations/jobs incrementally before considering Apps Script retirement;
-7. add permissioned executors domain-by-domain only after separate founder approval and audit coverage.
+1. merge the CI-green web dashboard shell;
+2. build the authenticated server integration around the merged GET-only Founder Read API;
+3. provision/use a dedicated server-only Google read credential without exposing it to the browser;
+4. validate live dashboard/read-model parity against current deterministic workbook outputs;
+5. deploy the read-only Founder Control Tower web surface to production under the approved deployment gate;
+6. verify fail-closed behavior, authentication, no-cache policy and zero-write/executor boundaries after deployment;
+7. migrate additional deterministic calculations/jobs incrementally before considering Apps Script retirement;
+8. add permissioned executors domain-by-domain only after separate founder approval and audit coverage.
