@@ -1,6 +1,6 @@
 # Project State
 
-Last updated: **2026-09-10**
+Last updated: **2026-09-11**
 
 ## Overall
 
@@ -56,6 +56,7 @@ Final hierarchy validation succeeded on 2026-09-10.
 - Delivered does not imply Paid. Delivered-but-unpaid remains courier receivable.
 - Stock risk is dynamically derived from current deterministic data; SKU severity is never hardcoded.
 - Inventory velocity = `max(7-day average pickup, 14-day average pickup)`.
+- Zero physical stock with zero recent velocity is `NO_RECENT_DEMAND` / unknown-velocity monitoring, not an active-demand stockout alert.
 - RRTO is not physical available inventory until received/check-in.
 - Last Mile scale gate is `>=70%` finalized delivery success.
 - Deterministic normalized data and reconciliations outrank AI interpretation.
@@ -108,16 +109,15 @@ Implemented and regression-tested:
 
 - strict Sheet matrix/header adapter;
 - GET-only Google Sheets REST reader with injected server-only token provider;
-- verified live source contracts for `DAILY_PNL`, `ORDERS_MASTER`, `META_SPEND_LIVE`, `PAYROLL_LEDGER`, `OPEX_CONTROL`, `SUBSCRIPTIONS_CONTROL`, `ACTION_QUEUE` and `STOCK_INTELLIGENCE`;
 - deterministic founder read model for MTD economics, cash/receivable semantics, Meta reconciliation, fixed-cost baseline, pending approvals and stock risk;
 - explicit data-quality flags;
 - authenticated framework-neutral founder API that is GET-only, no-store, fail-closed and provider-error-redacted;
 - zero workbook writes, zero AI calls and zero external actions;
 - zero-paid-API fixture regression tests.
 
-### Founder Web Dashboard Shell V1 — IN REVIEW
+### Founder Web Dashboard Shell V1 — MERGED
 
-Branch: `phase3/web-dashboard-shell`
+Merged to `main` on 2026-09-10 (merge SHA `afdb3bc6d9c5750a4592ea23766f274bbd12bd0f`).
 
 Implemented and CI-tested:
 
@@ -128,7 +128,47 @@ Implemented and CI-tested:
 - no duplicated deterministic formulas in UI;
 - no live Google credential, workbook write, approval mutation, AI call or external executor.
 
-The founder has approved proceeding to the controlled live web integration/deployment stage. Before production activation the live server path must still use a dedicated server-only Google read credential and pass parity validation against the deterministic workbook/read model.
+### Live Web Integration — CI GREEN / READY TO MERGE
+
+Branch: `phase3/live-web-integration`
+
+Validated on 2026-09-11:
+
+- server-side `/api/founder` integration uses the existing GET-only Founder Read API;
+- browser never receives Google credentials;
+- dedicated service-account token provider is server-only;
+- founder bearer token is required for the API;
+- API responses are `no-store` with provider/configuration errors redacted;
+- production web build regression passes;
+- live workbook parity exposed and repaired zero-demand stock semantics so dormant zero-stock SKUs do not become false critical alerts;
+- group cash/receivable parity now merges UAE `ORDERS_MASTER` and Kuwait `RAW_KWT` while deduplicating by shipment ID;
+- strict generic Sheet parser remains strict; RAW_KWT repeated headers are handled by a dedicated positional adapter rather than weakening contract validation;
+- payroll payment-evidence pending control count is now exposed correctly;
+- Sep-9 deterministic live-workbook regression is part of the main CI suite and is green at commit `03014c206795f2bfe48087ed954b703f6e6d4ed7`;
+- no Sheet writes, paid AI calls or external business executors are introduced.
+
+Sep-9 parity lock includes: 757 picked orders, 395 terminal successes, 251 pending, 111 RRTO, 78.06% finalized delivery, AED 28,731.12 delivered revenue / courier receivable at that cutoff, TikTok final-P&L hard blocker, two pending founder approvals, and dynamic current-demand stock classification.
+
+## Vercel Production Target
+
+Founder approved creating a **new dedicated Vercel project** for Founder Control Tower rather than deploying into COD Dropshipping, StoreGem, DropshippingHunt or any other existing project.
+
+Target:
+
+- Vercel project name: `founder-control-tower`
+- source repository: `modabid/founder-control-tower`
+- production purpose: Founder Control Tower dashboard + read-only founder API
+- environment and billing isolation: separate from existing ecommerce/SaaS projects
+- current status: **not yet deployed**
+
+Required server-only production environment values:
+
+- `FCT_GOOGLE_SERVICE_ACCOUNT_EMAIL`
+- `FCT_GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`
+- `FCT_WEB_ACCESS_TOKEN`
+- optional override `FCT_SPREADSHEET_ID` (otherwise the locked workbook ID is used)
+
+The clasp deployment credential must never be reused by the web application.
 
 ## Credential Boundary for Web Runtime
 
@@ -138,15 +178,14 @@ A production web/API deployment must use a **dedicated server-only Google read c
 
 Technical development, deterministic/offline tests, CI fixes, docs, PRs, internal merges, cached replay and read-only inspection proceed without founder interruption.
 
-Founder Yes/No is required before production deploy/redeploy, paid infrastructure or externally effective actions. Founder approval to proceed with the live web deployment stage was received after the offline dashboard shell was validated.
+Founder Yes/No is required before production deploy/redeploy, paid infrastructure or externally effective actions. Founder approval to proceed with the live web deployment stage and to create a separate `founder-control-tower` Vercel project has been received.
 
 ## Next Workstream
 
-1. merge the CI-green web dashboard shell;
-2. build the authenticated server integration around the merged GET-only Founder Read API;
-3. provision/use a dedicated server-only Google read credential without exposing it to the browser;
-4. validate live dashboard/read-model parity against current deterministic workbook outputs;
-5. deploy the read-only Founder Control Tower web surface to production under the approved deployment gate;
-6. verify fail-closed behavior, authentication, no-cache policy and zero-write/executor boundaries after deployment;
-7. migrate additional deterministic calculations/jobs incrementally before considering Apps Script retirement;
-8. add permissioned executors domain-by-domain only after separate founder approval and audit coverage.
+1. merge the CI-green live web integration PR into `main`;
+2. create/link the new dedicated Vercel project `founder-control-tower` to `modabid/founder-control-tower`;
+3. provision/use a dedicated server-only Google read credential and founder web access token without exposing either to the browser;
+4. deploy the read-only Founder Control Tower web surface under the approved production gate;
+5. verify authentication, live workbook parity, fail-closed behavior, no-cache policy and zero-write/executor boundaries after deployment;
+6. migrate additional deterministic calculations/jobs incrementally before considering Apps Script retirement;
+7. add permissioned executors domain-by-domain only after separate founder approval and audit coverage.
