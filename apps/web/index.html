@@ -5,26 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>Founder Control Tower</title>
-  <meta name="description" content="Founder Control Tower read-only operating dashboard">
+  <meta name="description" content="Founder Control Tower live read-only operating dashboard">
   <link rel="stylesheet" href="./styles.css">
 </head>
 <body>
   <div id="app" aria-live="polite"></div>
-  <noscript>This dashboard requires JavaScript to render the founder read model.</noscript>
-  <script src="./mock-founder-data.js"></script>
+  <noscript>This dashboard requires JavaScript to load the founder read model.</noscript>
   <script src="./dashboard.js"></script>
-  <script>
-    (function () {
-      var root = document.getElementById('app');
-      try {
-        window.FCTDashboard.mount(root, window.__FCT_FOUNDER_DATA__, {
-          mock: window.__FCT_MOCK__ === true
-        });
-      } catch (error) {
-        root.innerHTML = '<main class="shell"><section class="unavailable"><h1>Founder Control Tower</h1><p>Dashboard rendering failed safely. No business conclusion should be inferred.</p></section></main>';
-        console.error('FCT dashboard render failure');
-      }
-    })();
-  </script>
+  <script src="./live-dashboard.js"></script>
 </body>
 </html>
