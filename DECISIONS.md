@@ -47,3 +47,14 @@ Google Sheets/Apps Script continue during validation/production transition but a
 **Status:** Accepted
 
 Do not rewrite the entire system in one step. Extract stable business rules/contracts first, then database/API, then UI/action connectors. The Apps Script bridge can coexist during migration.
+
+## ADR-008 — Founder approval and execution are separate queue states
+
+**Date:** 2026-09-10  
+**Status:** Accepted
+
+Phase 2 uses the existing `ACTION_QUEUE` as a control-plane boundary between ATLAS recommendations and any future executor.
+
+A recommendation may be queued without external effect. Founder approval changes only the queue state; it does not itself execute ads, messages, payments, inventory changes, courier/order changes, purchases, deployments or other commitments.
+
+Founder-modified actions preserve the original row as `SUPERSEDED` and create a replacement record, keeping the decision trail auditable. V1 reuses the existing 24-column `ACTION_QUEUE` contract and does not add another sheet.

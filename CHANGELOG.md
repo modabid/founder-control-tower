@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-09-10 — Phase 2 Action Queue Core V1
+
+### Added
+
+- Deterministic `ACTION_QUEUE` / founder approval core on a dedicated Phase-2 branch.
+- Queue mapping from final ATLAS recommendations without executing business actions.
+- Separate approval and execution states.
+- Founder Approve / Reject / Modify-and-Approve state transitions with audit trail preservation.
+- Duplicate-open-action suppression.
+- Cached Phase-1 no-write preview path and no-API pure contract tests.
+- Phase-2 Node regression coverage in CI.
+- `docs/ACTION_QUEUE.md` contract.
+
+### Safety
+
+- V1 performs no ads, payments, refunds, courier/order changes, inventory changes, messages, purchases, bookings, commitments or deployments.
+- `APPROVED` / `READY` means eligible for a future executor; it does not mean executed.
+- Existing 24-column `ACTION_QUEUE` sheet contract is reused; no new tab or grid expansion.
+
+### Project State Correction
+
+- Phase-1 SENTINEL V11 parity repair was deployed to Apps Script via controlled `clasp push` on 2026-09-10.
+- Post-deploy `clasp pull` produced no Git drift.
+
 ## 2026-09-10 — SENTINEL Live Parity Repair
 
 ### Changed
@@ -13,7 +37,6 @@
 - Existing local Phase-1 regression suite passed in the Codex reconciliation workspace.
 - SENTINEL live/reference byte comparison passed there.
 - No API calls or paid AI validation were required.
-- No `clasp push` or Apps Script production deployment has occurred as part of this repair.
 
 ## 2026-09-10 — Live Apps Script Mirror
 
