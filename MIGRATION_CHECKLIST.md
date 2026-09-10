@@ -2,13 +2,19 @@
 
 ## Migration Status
 
-**Live Apps Script source mirror completed on 2026-09-10.**
+**Live Apps Script source mirror completed on 2026-09-10. Live-vs-locked Phase-1 parity is now 12/12.**
 
 The current Apps Script project was cloned with `clasp` into:
 
 `apps-script/live/`
 
 This folder is the direct live-source snapshot and is intentionally kept separate from the versioned/locked Phase-1 reference code under `apps-script/snapshots/`, `apps-script/runners/`, `apps-script/hierarchy/`, and `apps-script/orchestrator/`.
+
+## Phase-1 Parity
+
+All 12 mapped locked Phase-1 production components now match their corresponding files in `apps-script/live/` byte-for-byte in content. The `.gs` versus `.js` filename-extension distinction is intentional and reflects the organized reference tree versus the `clasp` live mirror.
+
+The final reconciliation issue was `AgentSentinelPhase1Runner.js`; it has been aligned to the locked `AgentSentinelPhase1Runner_v11.gs` reference.
 
 ## Mirrored
 
@@ -31,7 +37,8 @@ This folder is the direct live-source snapshot and is intentionally kept separat
 - `.clasp.json` is intentionally excluded from Git and must remain local-only.
 - `appsscript.json` is tracked because it is project source/configuration, not a credential file.
 - Script Property values are not stored in Git.
-- The live mirror represents the Apps Script source as cloned on 2026-09-10. Future Apps Script-side edits must be pulled before assuming GitHub matches production.
+- The live mirror represents the Apps Script source captured from production on 2026-09-10 plus reviewed parity corrections that have not necessarily been deployed back to Apps Script yet.
+- Future Apps Script-side edits must be pulled before assuming GitHub matches production.
 
 ## Credentials
 

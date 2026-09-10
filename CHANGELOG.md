@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-09-10 — SENTINEL Live Parity Repair
+
+### Changed
+
+- Aligned `apps-script/live/AgentSentinelPhase1Runner.js` with the locked `apps-script/hierarchy/AgentSentinelPhase1Runner_v11.gs` reference.
+- Restored compact structured-output constraints, compact AI context, output-completion recovery retry, and recovery diagnostics in the Git live mirror.
+- Recorded full **12/12** mapped Phase-1 live-vs-locked content parity.
+
+### Verified
+
+- Existing local Phase-1 regression suite passed in the Codex reconciliation workspace.
+- SENTINEL live/reference byte comparison passed there.
+- No API calls or paid AI validation were required.
+- No `clasp push` or Apps Script production deployment has occurred as part of this repair.
+
 ## 2026-09-10 — Live Apps Script Mirror
 
 ### Added
