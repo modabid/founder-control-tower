@@ -1,0 +1,89 @@
+name: Apps Script Controlled Deploy
+
+on:
+  push:
+    branches:
+      - deploy/apps-script
+
+permissions:
+  contents: read
+
+concurrency:
+  group: founder-control-tower-apps-script-production
+  cancel-in-progress: false
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FCT_SCRIPT_ID: 1gquskvwbH06I3ZgDQ28q9uY0U8VdV3X8BwPgdAG6UbOtAGTZLHV47LBL
+      CLASP_AUTH_JSON: ${{ secrets.FCT_CLASP_AUTH_JSON }}
+
+    steps:
+      - name: Checkout approved source
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run deterministic regression suite
+        run: npm test
+
+      - name: Validate deployment credential is configured
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLASP_AUTH_JSON:-}" ]; then
+            echo "FCT_CLASP_AUTH_JSON GitHub Actions secret is not configured."
+            echo "Deployment stopped before contacting Google Apps Script."
+            exit 1
+          fi
+
+      - name: Prepare private clasp configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH_FILE="$RUNNER_TEMP/.clasprc.json"
+          printf '%s' "$CLASP_AUTH_JSON" > "$AUTH_FILE"
+          jq -e . "$AUTH_FILE" >/dev/null
+
+          cat > apps-script/live/.clasp.json <<EOF
+          {
+            "scriptId": "$FCT_SCRIPT_ID",
+            "rootDir": "."
+          }
+          EOF
+
+          jq -e . apps-script/live/.clasp.json >/dev/null
+
+      - name: Inspect source before deployment
+        working-directory: apps-script/live
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y @google/clasp@3.4.1 -A "$RUNNER_TEMP/.clasprc.json" status
+
+      - name: Push reviewed source to Apps Script HEAD
+        working-directory: apps-script/live
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y @google/clasp@3.4.1 -A "$RUNNER_TEMP/.clasprc.json" push
+
+      - name: Pull back and verify source parity
+        working-directory: apps-script/live
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y @google/clasp@3.4.1 -A "$RUNNER_TEMP/.clasprc.json" pull
+          rm -f .clasp.json
+          git diff --exit-code -- .
+
+      - name: Deployment summary
+        shell: bash
+        run: |
+          echo "Apps Script source/HEAD deployment completed after tests and pull-back parity verification."
+          echo "This workflow does not create or update a separate versioned web-app deployment."
