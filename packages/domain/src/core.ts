@@ -133,8 +133,12 @@ export function physicalStockDays(availableStock: number, velocityPerDay: number
 
 export function stockGate(availableStock: number, stockDays: number | null): string {
   const stock = requireNonNegative(availableStock, 'availableStock');
+  // physicalStockDays() returns null only when recent pickup velocity is zero.
+  // Match the locked STOCK_INTELLIGENCE / Apps Script meaning: zero recent
+  // demand is monitor-only even when physical stock is zero. OUT_OF_STOCK is
+  // actionable only when there is recent demand (stockDays is numeric).
+  if (stockDays === null) return 'NO_RECENT_DEMAND';
   if (stock <= 0) return 'OUT_OF_STOCK';
-  if (stockDays === null) return 'UNKNOWN_VELOCITY';
   const days = requireNonNegative(stockDays, 'stockDays');
   if (days <= 3) return 'CRITICAL_LE_3_DAYS';
   if (days <= 7) return 'WATCH_LE_7_DAYS';
