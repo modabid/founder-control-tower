@@ -1,0 +1,45 @@
+name: Import audited baseline
+
+on:
+  push:
+    paths:
+      - '.import/GO'
+
+permissions:
+  contents: write
+
+jobs:
+  import-baseline:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Reconstruct audited archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .import/part-* > /tmp/fct.b64
+          base64 -d /tmp/fct.b64 > /tmp/fct.zip
+          mkdir -p /tmp/fct-extract
+          unzip -q /tmp/fct.zip -d /tmp/fct-extract
+          test -f /tmp/fct-extract/founder-control-tower/PROJECT_STATE.md
+          test -f /tmp/fct-extract/founder-control-tower/apps-script/orchestrator/Phase1FinalOrchestrator_v5.gs
+      - name: Import files and remove transport chunks
+        shell: bash
+        run: |
+          set -euo pipefail
+          rsync -a --exclude='.git/' /tmp/fct-extract/founder-control-tower/ ./
+          rm -rf .import
+          rm -f .github/workflows/import-baseline.yml
+      - name: Validate
+        run: npm test
+      - name: Commit baseline
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'Founder Control Tower Bot'
+          git config user.email 'actions@users.noreply.github.com'
+          git add -A
+          git commit -m 'chore: import audited Founder Control Tower baseline'
+          git push

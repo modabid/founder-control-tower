@@ -1,0 +1,33 @@
+# Secrets / local config
+.env
+.env.*
+!.env.example
+.clasp.json
+*.pem
+*.key
+
+# Dependencies/build
+node_modules/
+.next/
+dist/
+build/
+coverage/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Logs/temp
+*.log
+.tmp/
+tmp/
+
+# Raw/PII exports
+exports/
+raw-data/
+*.csv
+*.xlsx
+*.xls
+*.pdf

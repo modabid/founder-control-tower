@@ -1,0 +1,11 @@
+{
+  "name": "founder-control-tower",
+  "private": true,
+  "version": "0.1.0",
+  "scripts": {
+    "test": "node tests/phase1/orchestrator-smoke.js && node tests/phase1/approval-regression.js"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
