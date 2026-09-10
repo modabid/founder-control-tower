@@ -6,7 +6,7 @@ Last updated: **2026-09-10**
 
 Founder Control Tower Phase 1 is **locked, validated, and deployed with GitHub/local/Apps Script source parity**. GitHub is the durable code/documentation source of truth. Google Apps Script remains the transitional live runtime.
 
-Phase 2 is now in development: **ACTION_QUEUE + Founder Approval Core**.
+Phase 2 core is now substantially built. The project is moving to a **hands-off technical operating model** where normal development/testing/PR work proceeds without founder intervention and only externally effective changes require concise Yes/No approval.
 
 ## Repository / Live Runtime Status
 
@@ -16,9 +16,11 @@ Phase 2 is now in development: **ACTION_QUEUE + Founder Approval Core**.
 - Phase-1 live-vs-locked mapped code parity: **12/12**
 - SENTINEL V11 parity correction: deployed to Apps Script on 2026-09-10 through controlled `clasp push`
 - post-deploy `clasp pull`: clean; no Git drift detected
+- Phase-2 `ActionQueue.js`: deployed to Apps Script source/HEAD on 2026-09-10
+- Phase-2 validated-cache bridge and later hands-off modules: Git-reviewed development pending controlled deployment
 - `.clasp.json`: local-only / intentionally excluded from Git
 - `appsscript.json`: tracked
-- Phase-1 local/GitHub regression suite: PASS
+- Phase-1 and Phase-2 deterministic regression coverage: maintained in GitHub CI
 
 ## Phase-1 Locked Agents
 
@@ -84,29 +86,52 @@ The workbook remains the live MVP data/control source during migration.
 
 Existing `ACTION_QUEUE` is reused for Phase 2. V1 keeps the current 24-column A:X contract and does not add another tab or expand the grid.
 
-## Phase-2 V1 — Action Queue / Founder Approval Core
+## Phase 2 — Daily Founder Operating Surface
 
-Status: **IN DEVELOPMENT / NOT DEPLOYED**
+### Completed in code / Git
 
-Planned/implemented contract on the Phase-2 branch:
+- ACTION_QUEUE deterministic mapping from final ATLAS recommendations.
+- Duplicate-open-action suppression.
+- Founder Approve / Reject / Modify-and-Approve state transitions.
+- Approval state separated from execution state; approval never implies execution.
+- Zero-AI validated ATLAS cache bridge fixing the earlier preview-shape mismatch.
+- Deterministic founder dashboard snapshot contract for future UI/API use.
+- Auditable agent playbook registry with runtime mirror and parity tests.
+- Daily operating-cycle code that can run the cost-controlled hierarchy, refresh `FOUNDER_REPORT`, append `REPORT_HISTORY`, and queue actions while executing zero external business actions.
+- Approval-gated daily trigger installer/remover; trigger is not activated by code deployment alone.
+- Hands-off GitHub Actions Apps Script source deployment workflow.
+- `deploy/apps-script` branch reserved as the explicit production deployment gate.
 
-1. final ATLAS recommendations can be converted into deterministic queue records;
-2. duplicate open recommendations are suppressed;
-3. governed actions start `PENDING_FOUNDER / BLOCKED_APPROVAL`;
-4. internal no-external-commitment actions start `NOT_REQUIRED / READY_INTERNAL`;
-5. founder Approve/Reject/Modify changes queue state only and never executes the action;
-6. founder modification preserves the original record as `SUPERSEDED` and creates a replacement;
-7. preview uses cached Phase-1 output and requires no paid AI call;
-8. no executor is included in V1.
+### One-time prerequisite for hands-off Apps Script deployment
 
-See `docs/ACTION_QUEUE.md` and ADR-008.
+GitHub repository secret:
+
+`FCT_CLASP_AUTH_JSON`
+
+This must contain the founder's existing authenticated `.clasprc.json` credential. It is never committed or echoed. Once configured, normal source deployment no longer requires founder PowerShell.
+
+### Not activated / not deployed yet
+
+- validated-cache bridge and current hands-off Phase-2 branch modules still need controlled Apps Script deployment;
+- daily schedule is not installed;
+- no external-action executor exists;
+- no paid infrastructure/database migration has been approved;
+- no separate versioned web-app deployment is being changed.
+
+## Founder Approval Model
+
+Normal technical development, deterministic tests, PR creation, CI fixes, cached replay and read-only inspection proceed without interrupting the founder.
+
+A concise **Yes / No** is required for production deployment, paid infrastructure and governed external actions such as ads, money movement, supplier/customer/courier communication, order/routing/inventory changes, purchases or commitments.
+
+See `docs/HANDS_OFF_OPERATION.md` and ADR-009.
 
 ## Next Workstream
 
-1. validate and review Phase-2 Action Queue / Founder Approval Core in GitHub CI;
-2. deploy only after founder approval;
-3. run no-write preview against cached Phase-1 output before any queue write;
-4. add founder-facing approval UI/dashboard controls;
-5. add permissioned executors one domain at a time, with pre-execution approval re-check and post-action SENTINEL verification;
-6. add agent instruction/playbook memory with auditable founder rules;
-7. extract portable domain logic into TypeScript and introduce database/API/web app incrementally.
+1. merge the hands-off Phase-2 branch after CI passes;
+2. configure the one-time private clasp GitHub secret;
+3. request a single Yes/No to deploy the approved `main` commit through the `deploy/apps-script` gate;
+4. verify automated push/pull parity;
+5. request a separate Yes/No before activating the daily 08:15 Asia/Dubai trigger;
+6. use Sheet + ChatGPT as the founder operating surface while building Phase 3 portable TypeScript/data contracts;
+7. add controlled executors only after explicit domain-by-domain founder approval.
