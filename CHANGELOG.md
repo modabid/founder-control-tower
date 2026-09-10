@@ -1,5 +1,25 @@
 # Changelog
 
+## 2026-09-10 — Phase 3 Portable Domain Core V1
+
+### Added
+
+- First portable TypeScript business-rule module under `packages/domain/src/core.ts`.
+- Locked terminal delivery-success formula with Delivered/Paid/RRTO semantics.
+- Explicit Delivered-vs-Paid courier-receivable helpers; Delivered is not inferred as Paid.
+- Active-channel contribution completeness gate with the TikTok missing-spend hard block.
+- Operating-profit calculation only after Real Contribution is complete.
+- Locked inventory velocity, physical stock-day and dynamic stock-gate functions.
+- Last Mile `>=70%` scale gate and fail-closed gate aggregation.
+- Strict deterministic input validation so invalid/negative inputs fail instead of being silently guessed.
+- Phase-3 zero-API regression suite executed with Node 22 type stripping; no TypeScript build dependency added yet.
+
+### Current Runtime Note
+
+- The controlled GitHub-to-Apps-Script source deployment path is operational and has completed regression, push and pull-back parity successfully.
+- The Apps Script Execution API `run-function` path returned Google storage `NOT_FOUND` during remote trigger activation attempts, so no Apps Script daily trigger is claimed as installed from that route.
+- The approved 08:15 Asia/Dubai founder brief is currently scheduled through ChatGPT automation and remains analysis/reporting only; no external business action is executed automatically.
+
 ## 2026-09-10 — Phase 2 Hands-Off Operating Surface
 
 ### Added
@@ -17,10 +37,9 @@
 
 ### Not Activated Yet
 
-- The daily Apps Script trigger is code-complete but is not installed until the founder approves scheduling.
-- The automated Apps Script deploy workflow cannot deploy until the private GitHub Actions secret is configured once.
+- The daily Apps Script trigger is code-complete but is not claimed as installed through Apps Script because the remote Execution API function path is unavailable in the current deployment shape.
 - No paid infrastructure, database migration, external messaging or business executor was created.
-- A separate versioned Apps Script web-app deployment remains outside this source/HEAD deployment path.
+- A separate versioned Apps Script web-app deployment remains outside the source/HEAD deployment path.
 
 ## 2026-09-10 — Phase 2 Action Queue Core V1
 
