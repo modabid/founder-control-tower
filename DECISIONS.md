@@ -58,3 +58,16 @@ Phase 2 uses the existing `ACTION_QUEUE` as a control-plane boundary between ATL
 A recommendation may be queued without external effect. Founder approval changes only the queue state; it does not itself execute ads, messages, payments, inventory changes, courier/order changes, purchases, deployments or other commitments.
 
 Founder-modified actions preserve the original row as `SUPERSEDED` and create a replacement record, keeping the decision trail auditable. V1 reuses the existing 24-column `ACTION_QUEUE` contract and does not add another sheet.
+
+## ADR-009 — Hands-off technical operation with explicit founder gates
+
+**Date:** 2026-09-10  
+**Status:** Accepted
+
+Routine technical work should not require the founder to run local commands. Repository inspection, implementation, deterministic testing, documentation, PR creation, CI troubleshooting, cached replay and no-write previews may proceed without interrupting the founder.
+
+Founder approval remains mandatory for production deployment, paid infrastructure, external communications, financial commitments, ads/courier/order/inventory changes and other externally effective actions covered by governance. Approval requests should be concise Yes/No decisions.
+
+For Apps Script source deployment, branch `deploy/apps-script` is the explicit production gate. Moving that branch to an approved `main` commit triggers deterministic CI, controlled `clasp push`, immediate pull-back verification and drift failure handling. This deployment path updates Apps Script source/HEAD only and does not silently create or update a separate versioned web-app deployment.
+
+A one-time private GitHub Actions secret (`FCT_CLASP_AUTH_JSON`) is required because credentials must never be committed to the repository.

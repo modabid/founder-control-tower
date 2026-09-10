@@ -2,7 +2,7 @@
 
 ## Phase 1 — Decision Intelligence
 
-**Status: complete / locked**
+**Status: complete / locked / deployed**
 
 - specialist agents
 - audit/supervisor/founder hierarchy
@@ -13,15 +13,24 @@
 
 ## Phase 2 — Repository + Daily Founder Operating Surface
 
-- GitHub becomes source of truth
-- export all live Apps Script runtime files
-- Founder Dashboard
-- ACTION_QUEUE + Approve / Reject / Modify
-- agent-specific founder instruction/playbook registry
-- scheduled founder brief / alerts
-- audit trail for recommendations, approvals and outcomes
+**Status: core code complete; production activation pending controlled approvals**
+
+- ✅ GitHub is durable source of truth
+- ✅ all current live Apps Script runtime files mirrored
+- ✅ deterministic founder dashboard snapshot contract
+- ✅ ACTION_QUEUE + Approve / Reject / Modify core
+- ✅ validated ATLAS cache bridge / zero-write preview path
+- ✅ agent-specific founder instruction/playbook registry
+- ✅ daily founder operating-cycle code
+- ✅ recommendation / approval audit trail through ACTION_QUEUE + REPORT_HISTORY
+- ✅ hands-off controlled Apps Script source deployment workflow
+- ⏳ one-time GitHub clasp credential secret
+- ⏳ activate daily trigger after founder Yes/No approval
+- ⏳ founder-facing web UI can follow after portable API/auth layer; current Sheet + ChatGPT remain the operating surface during transition
 
 ## Phase 3 — Portable Domain & Data Platform
+
+**Next build phase after Phase-2 activation**
 
 - extract formulas/rules to TypeScript package
 - design Postgres/Supabase schema
