@@ -47,7 +47,7 @@ jobs:
         run: |
           set -euo pipefail
           AUTH_FILE="$RUNNER_TEMP/.clasprc.json"
-          printf '%s' "$CLASP_AUTH_JSON" > "$AUTH_FILE"
+          node scripts/normalize-clasp-auth.cjs "$AUTH_FILE"
           jq -e . "$AUTH_FILE" >/dev/null
 
           cat > apps-script/live/.clasp.json <<EOF
