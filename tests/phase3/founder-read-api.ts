@@ -16,7 +16,12 @@ const headers: Record<string, SheetMatrix> = {
 
 class CountingReader implements SheetRangeReader {
   calls = 0;
-  constructor(private fail = false) {}
+  private readonly fail: boolean;
+
+  constructor(fail = false) {
+    this.fail = fail;
+  }
+
   async readRange(range: string): Promise<SheetMatrix> {
     this.calls++;
     if (this.fail) throw new Error('provider secret details must not leak');
