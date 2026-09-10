@@ -25,14 +25,35 @@ export type ScaleGate = {
   reason?: string;
 };
 
+function requireFinite(value: number, label: string): number {
+  if (typeof value !== 'number' || !Number.isFinite(value)) {
+    throw new Error(label + ' must be a finite number.');
+  }
+  return value;
+}
+
+function requireNonNegative(value: number, label: string): number {
+  const n = requireFinite(value, label);
+  if (n < 0) throw new Error(label + ' must not be negative.');
+  return n;
+}
+
+function channelSpend(input: SpendByChannel, channel: string): number | null | undefined {
+  if (Object.prototype.hasOwnProperty.call(input, channel)) return input[channel];
+  const lower = channel.toLowerCase();
+  if (Object.prototype.hasOwnProperty.call(input, lower)) return input[lower];
+  return undefined;
+}
+
 export function roundMoney(value: number): number {
-  return Math.round((value + Number.EPSILON) * 100) / 100;
+  const n = requireFinite(value, 'money value');
+  return Math.round((n + Number.EPSILON) * 100) / 100;
 }
 
 export function finalDeliverySuccess(counts: TerminalCounts): number | null {
-  const delivered = Math.max(0, Number(counts.delivered) || 0);
-  const paid = Math.max(0, Number(counts.paid) || 0);
-  const rrto = Math.max(0, Number(counts.rrto) || 0);
+  const delivered = requireNonNegative(counts.delivered, 'delivered');
+  const paid = requireNonNegative(counts.paid, 'paid');
+  const rrto = requireNonNegative(counts.rrto, 'rrto');
   const terminal = delivered + paid + rrto;
   return terminal > 0 ? (delivered + paid) / terminal : null;
 }
@@ -46,10 +67,15 @@ export function isPaidStatus(status: string): boolean {
 }
 
 export function contributionAfterActiveAds(input: ContributionInput): ContributionResult {
-  const active = [...new Set((input.activeChannels || []).map((x) => String(x).trim().toUpperCase()).filter(Boolean))];
+  const gross = requireFinite(input.grossContributionAed, 'grossContributionAed');
+  const variable = requireNonNegative(input.directVariableCostsAed ?? 0, 'directVariableCostsAed');
+  const active = [...new Set((input.activeChannels || [])
+    .map((x) => String(x).trim().toUpperCase())
+    .filter(Boolean))];
+
   const missing = active.filter((channel) => {
-    const value = input.spendByChannelAed[channel] ?? input.spendByChannelAed[channel.toLowerCase()];
-    return value === null || value === undefined || value === '' as unknown as number;
+    const value = channelSpend(input.spendByChannelAed || {}, channel);
+    return value === null || value === undefined;
   });
 
   if (missing.length) {
@@ -60,14 +86,13 @@ export function contributionAfterActiveAds(input: ContributionInput): Contributi
   }
 
   const adSpend = active.reduce((sum, channel) => {
-    const raw = input.spendByChannelAed[channel] ?? input.spendByChannelAed[channel.toLowerCase()] ?? 0;
-    return sum + Number(raw || 0);
+    const raw = channelSpend(input.spendByChannelAed, channel);
+    return sum + requireNonNegative(raw as number, channel + ' spend');
   }, 0);
-  const variable = Number(input.directVariableCostsAed || 0);
 
   return {
     status: 'READY',
-    valueAed: roundMoney(Number(input.grossContributionAed || 0) - adSpend - variable),
+    valueAed: roundMoney(gross - adSpend - variable),
     missingChannels: []
   };
 }
@@ -76,6 +101,7 @@ export function operatingProfit(
   realContribution: ContributionResult,
   fixedOpexAed: number
 ): ContributionResult {
+  const fixed = requireNonNegative(fixedOpexAed, 'fixedOpexAed');
   if (realContribution.valueAed === null || realContribution.status !== 'READY') {
     return {
       status: realContribution.status,
@@ -86,38 +112,45 @@ export function operatingProfit(
 
   return {
     status: 'READY',
-    valueAed: roundMoney(realContribution.valueAed - Number(fixedOpexAed || 0)),
+    valueAed: roundMoney(requireFinite(realContribution.valueAed, 'realContribution.valueAed') - fixed),
     missingChannels: []
   };
 }
 
 export function demandVelocity(avgPickup7d: number, avgPickup14d: number): number {
-  return Math.max(0, Number(avgPickup7d) || 0, Number(avgPickup14d) || 0);
+  return Math.max(
+    requireNonNegative(avgPickup7d, 'avgPickup7d'),
+    requireNonNegative(avgPickup14d, 'avgPickup14d')
+  );
 }
 
 export function physicalStockDays(availableStock: number, velocityPerDay: number): number | null {
-  const stock = Math.max(0, Number(availableStock) || 0);
-  const velocity = Math.max(0, Number(velocityPerDay) || 0);
+  const stock = requireNonNegative(availableStock, 'availableStock');
+  const velocity = requireNonNegative(velocityPerDay, 'velocityPerDay');
   if (velocity <= 0) return null;
   return stock / velocity;
 }
 
 export function stockGate(availableStock: number, stockDays: number | null): string {
-  if ((Number(availableStock) || 0) <= 0) return 'OUT_OF_STOCK';
-  if (stockDays === null || !Number.isFinite(stockDays)) return 'UNKNOWN_VELOCITY';
-  if (stockDays <= 3) return 'CRITICAL_LE_3_DAYS';
-  if (stockDays <= 7) return 'WATCH_LE_7_DAYS';
+  const stock = requireNonNegative(availableStock, 'availableStock');
+  if (stock <= 0) return 'OUT_OF_STOCK';
+  if (stockDays === null) return 'UNKNOWN_VELOCITY';
+  const days = requireNonNegative(stockDays, 'stockDays');
+  if (days <= 3) return 'CRITICAL_LE_3_DAYS';
+  if (days <= 7) return 'WATCH_LE_7_DAYS';
   return 'PASS';
 }
 
 export function lastMileScaleGate(finalizedDeliverySuccess: number | null): ScaleGate {
-  if (finalizedDeliverySuccess === null || !Number.isFinite(finalizedDeliverySuccess)) {
+  if (finalizedDeliverySuccess === null) {
     return { key: 'LAST_MILE_DELIVERY_SUCCESS', pass: false, reason: 'MISSING_FINALIZED_DELIVERY_SUCCESS' };
   }
+  const success = requireNonNegative(finalizedDeliverySuccess, 'finalizedDeliverySuccess');
+  if (success > 1) throw new Error('finalizedDeliverySuccess must not exceed 1.');
   return {
     key: 'LAST_MILE_DELIVERY_SUCCESS',
-    pass: finalizedDeliverySuccess >= 0.70,
-    reason: finalizedDeliverySuccess >= 0.70 ? '' : 'BELOW_70_PERCENT'
+    pass: success >= 0.70,
+    reason: success >= 0.70 ? '' : 'BELOW_70_PERCENT'
   };
 }
 
