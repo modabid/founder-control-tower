@@ -11,10 +11,12 @@ Founder Control Tower Phase 1 is **locked and validated**. GitHub is now the dur
 - GitHub repository: `modabid/founder-control-tower`
 - default branch: `main`
 - live Apps Script source mirror: `apps-script/live/`
+- Phase-1 live-vs-locked mapped code parity: **12/12**
 - `.clasp.json`: local-only / intentionally excluded from Git
 - `appsscript.json`: tracked
 - local Phase-1 regression suite: PASS
-- GitHub Phase 1 CI after live-runtime mirror commit: PASS
+- GitHub Phase 1 CI after initial live-runtime mirror commit: PASS
+- SENTINEL V11 parity correction: reviewed/tested in Git; not deployed to Apps Script until founder approval and controlled `clasp push`
 
 The versioned locked Phase-1 reference code remains separate from the direct live-source mirror so future changes can be compared safely.
 
@@ -92,11 +94,12 @@ The workbook remains the live MVP data/control source during migration.
 1. GitHub established as durable code/documentation source of truth.
 2. Current live Apps Script source exported into `apps-script/live/`.
 3. Local and GitHub Phase-1 regression tests passing.
-4. Live Apps Script and locked/versioned reference code kept separately for controlled reconciliation.
+4. Live-vs-locked Phase-1 reconciliation completed at **12/12 parity**.
+5. Live Apps Script and locked/versioned reference code kept separately for controlled deployment and future drift detection.
 
 ## Next Workstream
 
-1. Reconcile live mirror versus locked/versioned Phase-1 code and document any meaningful differences.
+1. After founder approval, deploy the reviewed SENTINEL V11 parity correction to Apps Script through controlled `clasp push` and verify production source parity without paid AI calls.
 2. Build Founder Dashboard on top of the locked Phase-1 contracts.
 3. Build ACTION_QUEUE + founder approval workflow.
 4. Add agent instruction/playbook memory with auditable founder rules.

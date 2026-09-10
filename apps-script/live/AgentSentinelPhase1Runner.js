@@ -51,6 +51,7 @@ function runFctSentinelPhase1AuditAI() {
       'When recommending stock evidence/replenishment review, use the current deterministic stock_gate and priority for each market+SKU. Do not carry forward stale SKU severity labels from earlier runs.',
       'Primary-SKU attribution and country-pending Meta allocation are provisional review items, not universal hard blockers unless the deterministic packet makes them SKU/market-specific.',
       'Maximum 4 findings and maximum 3 recommendations.',
+      'Keep output compact for structured reliability: summary maximum 80 words; finding detail maximum 45 words; recommendation why maximum 35 words; maximum 2 evidence_refs per finding; maximum 2 questions_for_abid; maximum 6 provisional_fields. Do not repeat the same evidence across summary, findings and recommendations.',
       'Any recommendation involving an external contact, source-system change, ad/courier/order/stock/payment action, or business commitment requires approval_required=true.',
       'Internal reconciliation, evidence comparison, or source refresh checks may use approval_required=false.',
       'Never bundle an internal no-approval action and an external approval-required action into one recommendation. Split them into separate recommendations so approval_required is unambiguous.',
@@ -61,32 +62,16 @@ function runFctSentinelPhase1AuditAI() {
       'Return a concise audit verdict suitable for ORBIT.'
     ].join(' ');
 
-    const context = {
-      phase1_audit_packet: packet,
-      governance: {
-        mode: 'AUDIT_ONLY',
-        may_execute: false,
-        final_authority: 'Abid',
-        reporting_chain:
-          'Domain Agents -> SENTINEL -> ORBIT -> ATLAS -> Abid',
-        source_precedence: [
-          'DETERMINISTIC_SOURCE_AND_CONTROL_DATA',
-          'DETERMINISTIC_CROSS_CHECKS',
-          'CURRENT_ALERTS_AND_RECONCILIATION_STATUS',
-          'AI_AUDIT'
-        ]
-      },
-      phase_note:
-        'This isolated Step 6I validates SENTINEL against deterministic Phase-1 source truth. Specialist AI briefs will be added to the final integrated hierarchy run.'
-    };
+    const context =
+      fctSentinelBuildAIContext_(packet, false);
 
-    const aiRun = fctRunAgent_(
-      'AG012',
-      task,
-      context,
-      'STANDARD',
-      runId
-    );
+    const aiRun =
+      fctSentinelRunAIWithRecovery_(
+        task,
+        context,
+        packet,
+        runId
+      );
 
     if (!aiRun || !aiRun.result) {
       throw new Error(
@@ -153,6 +138,10 @@ function runFctSentinelPhase1AuditAI() {
       agent_id: 'AG012',
       packet_status: packet.overall_source_status,
       runtime: aiRun.runtime,
+      recovery_retry:
+        !!aiRun.sentinel_recovery_retry,
+      ai_context_chars:
+        aiRun.sentinel_ai_context_chars || null,
       deterministic_cross_checks:
         packet.deterministic_cross_checks,
       stock_classification:
@@ -208,6 +197,508 @@ function testFctSentinelPhase1PacketNoApi() {
 }
 
 
+
+
+
+function fctSentinelRunAIWithRecovery_(
+  task,
+  context,
+  packet,
+  runId
+) {
+  try {
+    const first = fctRunAgent_(
+      'AG012',
+      task,
+      context,
+      'STANDARD',
+      runId
+    );
+
+    if (first) {
+      first.sentinel_recovery_retry = false;
+      first.sentinel_ai_context_chars =
+        JSON.stringify(context).length;
+    }
+
+    return first;
+
+  } catch (err) {
+    if (!fctSentinelIsOutputCompletionError_(err)) {
+      throw err;
+    }
+
+    const recoveryContext =
+      fctSentinelBuildAIContext_(packet, true);
+
+    const recoveryTask = [
+      task,
+      'RECOVERY MODE: Return the smallest valid structured audit.',
+      'Use no more than 3 findings and 3 recommendations.',
+      'Summary maximum 60 words.',
+      'Each finding detail maximum 30 words.',
+      'Each recommendation why maximum 25 words.',
+      'Use maximum 1 evidence_ref per finding.',
+      'Use maximum 1 question_for_abid.',
+      'Use maximum 4 provisional_fields.',
+      'Do not restate methodology, source precedence, or matched checks except where needed for the verdict.'
+    ].join(' ');
+
+    const recovered = fctRunAgent_(
+      'AG012',
+      recoveryTask,
+      recoveryContext,
+      'STANDARD',
+      runId
+    );
+
+    if (recovered) {
+      recovered.sentinel_recovery_retry = true;
+      recovered.sentinel_ai_context_chars =
+        JSON.stringify(recoveryContext).length;
+    }
+
+    return recovered;
+  }
+}
+
+
+function fctSentinelIsOutputCompletionError_(err) {
+  const s = String(
+    (err && err.message) || err || ''
+  );
+
+  return (
+    /max_output_tokens/i.test(s) ||
+    /max_tokens/i.test(s) ||
+    /before completing structured JSON/i.test(s) ||
+    /structured output.*incomplete/i.test(s) ||
+    /schema\/output completion/i.test(s)
+  );
+}
+
+
+function fctSentinelBuildAIContext_(
+  packet,
+  ultraCompact
+) {
+  const p = packet || {};
+  const ledger = p.ledger || {};
+  const scale = p.scale || {};
+  const route = p.route || {};
+  const stock = p.stock || {};
+
+  const compactPacket = {
+    overall_source_status:
+      p.overall_source_status,
+    source_statuses:
+      p.source_statuses,
+    deterministic_cross_checks:
+      p.deterministic_cross_checks,
+
+    ledger: {
+      period: ledger.period,
+      economics:
+        fctSentinelPick_(
+          ledger.economics,
+          [
+            'orders_picked_mtd',
+            'delivered_unpaid_mtd',
+            'paid_mtd',
+            'rrto_mtd',
+            'finalized_delivery_success',
+            'delivered_revenue_aed',
+            'gross_contribution_aed',
+            'meta_platform_spend_aed',
+            'meta_not_represented_in_daily_pnl_aed',
+            'contribution_after_all_meta_aed',
+            'tiktok_spend_aed',
+            'real_contribution_profit_aed',
+            'real_contribution_status',
+            'real_operating_profit_aed',
+            'real_operating_profit_status',
+            'courier_receivable_aed'
+          ]
+        ),
+      cash_reconciliation:
+        ledger.cash_reconciliation,
+      data_quality:
+        fctSentinelCompactDQ_(
+          ledger.data_quality,
+          ultraCompact ? 5 : 8
+        )
+    },
+
+    scale: {
+      channel_completeness:
+        scale.channel_completeness,
+      meta: scale.meta,
+      courier_scale_gates:
+        scale.courier_scale_gates,
+      data_quality:
+        fctSentinelCompactDQ_(
+          scale.data_quality,
+          ultraCompact ? 5 : 8
+        )
+    },
+
+    route: {
+      live_courier_view:
+        route.live_courier_view,
+      settlement_reconciliation:
+        route.settlement_reconciliation,
+      normalized_order_view:
+        ultraCompact
+          ? []
+          : route.normalized_order_view,
+      data_quality:
+        fctSentinelCompactDQ_(
+          route.data_quality,
+          ultraCompact ? 6 : 10
+        )
+    },
+
+    stock: {
+      inventory_summary:
+        stock.inventory_summary,
+      critical_stock:
+        (stock.critical_stock || [])
+          .slice(0, 10),
+      watch_stock:
+        (stock.watch_stock || [])
+          .slice(0, ultraCompact ? 5 : 8),
+      inbound_visibility:
+        stock.inbound_visibility,
+      meta_market_attribution:
+        stock.meta_market_attribution,
+      reconciliation_exceptions:
+        ultraCompact
+          ? []
+          : (stock.reconciliation_exceptions || [])
+              .slice(0, 8),
+      data_quality:
+        fctSentinelCompactDQ_(
+          stock.data_quality,
+          ultraCompact ? 6 : 10
+        )
+    },
+
+    locked_interpretation_rules:
+      p.locked_interpretation_rules
+  };
+
+  return {
+    phase1_audit_packet: compactPacket,
+    governance: {
+      mode: 'AUDIT_ONLY',
+      may_execute: false,
+      final_authority: 'Abid',
+      reporting_chain:
+        'Domain Agents -> SENTINEL -> ORBIT -> ATLAS -> Abid',
+      source_precedence: [
+        'DETERMINISTIC_SOURCE_AND_CONTROL_DATA',
+        'DETERMINISTIC_CROSS_CHECKS',
+        'CURRENT_ALERTS_AND_RECONCILIATION_STATUS',
+        'AI_AUDIT'
+      ]
+    },
+    phase_note:
+      ultraCompact
+        ? 'Structured-output recovery context. Source truth is unchanged; only nonessential detail was removed.'
+        : 'Compact Step 6I SENTINEL context. Full deterministic packet remains available to runtime guards outside the AI prompt.'
+  };
+}
+
+
+function fctSentinelCompactDQ_(dq, limit) {
+  const x = dq || {};
+  const flags = Array.isArray(x.flags)
+    ? x.flags
+    : [];
+
+  const ranked = flags.slice().sort(function(a, b) {
+    const rank = {
+      FAIL: 0,
+      CRITICAL: 0,
+      ACT_NOW: 1,
+      REVIEW: 2,
+      WATCH: 2,
+      NORMAL: 3
+    };
+
+    const aa = String(
+      (a && a.severity) || ''
+    ).toUpperCase();
+
+    const bb = String(
+      (b && b.severity) || ''
+    ).toUpperCase();
+
+    return (
+      (rank[aa] === undefined ? 9 : rank[aa]) -
+      (rank[bb] === undefined ? 9 : rank[bb])
+    );
+  });
+
+  return {
+    status: x.status,
+    flags: ranked
+      .slice(0, limit || 8)
+      .map(function(f) {
+        return {
+          severity: f && f.severity,
+          code: f && f.code,
+          detail:
+            fctSentinelTrimText_(
+              f && f.detail,
+              220
+            )
+        };
+      })
+  };
+}
+
+
+function fctSentinelPick_(obj, keys) {
+  const src = obj || {};
+  const out = {};
+
+  (keys || []).forEach(function(k) {
+    if (Object.prototype.hasOwnProperty.call(
+          src,
+          k
+        )) {
+      out[k] = src[k];
+    }
+  });
+
+  return out;
+}
+
+
+function fctSentinelTrimText_(value, maxLen) {
+  const s = String(
+    value === undefined ||
+    value === null
+      ? ''
+      : value
+  );
+
+  const n = Number(maxLen || 220);
+
+  return s.length <= n
+    ? s
+    : s.slice(0, n - 1) + '…';
+}
+
+
+function testFctSentinelCompactRecoveryNoApi() {
+  const mockPacket = {
+    overall_source_status: 'FAIL',
+    source_statuses: {
+      ledger: 'FAIL',
+      scale: 'FAIL',
+      route: 'FAIL',
+      stock: 'FAIL'
+    },
+    deterministic_cross_checks: {
+      tiktok_blocker_consistency: {
+        status: 'MATCH'
+      }
+    },
+    ledger: {
+      period: { month: '2026-09' },
+      economics: {
+        finalized_delivery_success: 0.84,
+        meta_platform_spend_aed: 6701.85,
+        real_contribution_status:
+          'BLOCKED_MISSING_TIKTOK_SPEND',
+        courier_receivable_aed: 24204.73
+      },
+      cash_reconciliation: {
+        items: [
+          { courier: 'C3X', status: 'MATCHED' },
+          { courier: 'TFM', status: 'REVIEW' },
+          { courier: 'OTO', status: 'REVIEW' }
+        ]
+      },
+      data_quality: {
+        status: 'FAIL',
+        flags: new Array(20).fill(null)
+          .map(function(_, i) {
+            return {
+              severity:
+                i < 2 ? 'FAIL' : 'REVIEW',
+              code: 'LEDGER_' + i,
+              detail:
+                'Long deterministic ledger detail ' +
+                i + ' ' + new Array(30).join('x')
+            };
+          })
+      }
+    },
+    scale: {
+      channel_completeness: {
+        tiktok: {
+          status:
+            'MISSING_ACTIVE_CHANNEL_SPEND'
+        }
+      },
+      meta: {
+        platform_spend_aed: 6701.85
+      },
+      courier_scale_gates: [
+        {
+          courier: 'Last Mile',
+          gate_status: 'FAIL'
+        }
+      ],
+      data_quality: {
+        status: 'FAIL',
+        flags: []
+      }
+    },
+    route: {
+      live_courier_view: [
+        {
+          courier: 'Last Mile',
+          finalized_success: 0.641,
+          freshness_status: 'STALE_REVIEW'
+        }
+      ],
+      settlement_reconciliation: [
+        { courier: 'C3X', status: 'MATCHED' },
+        { courier: 'TFM', status: 'REVIEW' },
+        { courier: 'OTO', status: 'REVIEW' }
+      ],
+      normalized_order_view: new Array(20)
+        .fill(null)
+        .map(function(_, i) {
+          return {
+            courier: 'C' + i,
+            delivered_unpaid: i,
+            rrto: 1
+          };
+        }),
+      data_quality: {
+        status: 'FAIL',
+        flags: []
+      }
+    },
+    stock: {
+      inventory_summary: {
+        critical_le_3d_rows: 1,
+        out_of_stock_rows: 2
+      },
+      critical_stock: [
+        {
+          country:
+            'United Arab Emirates',
+          sku: 'PLG597',
+          available_stock_days: 2.09
+        },
+        {
+          country:
+            'United Arab Emirates',
+          sku: 'PLG609',
+          available_stock_days: 0
+        },
+        {
+          country: 'Kuwait',
+          sku: 'PLG597',
+          available_stock_days: 0
+        }
+      ],
+      watch_stock: [
+        {
+          country: 'Kuwait',
+          sku: 'PLG617',
+          available_stock_days: 3.5
+        }
+      ],
+      inbound_visibility: {
+        has_reliable_open_inbound_pipeline:
+          false
+      },
+      meta_market_attribution: {
+        platform_spend_aed: 6701.85
+      },
+      reconciliation_exceptions:
+        new Array(20).fill(null)
+          .map(function(_, i) {
+            return {
+              sku: 'X' + i,
+              detail: 'recon'
+            };
+          }),
+      data_quality: {
+        status: 'FAIL',
+        flags: []
+      }
+    },
+    locked_interpretation_rules: {
+      scale:
+        'Final SCALE blocked while TikTok missing.'
+    }
+  };
+
+  const normal =
+    fctSentinelBuildAIContext_(
+      mockPacket,
+      false
+    );
+
+  const recovery =
+    fctSentinelBuildAIContext_(
+      mockPacket,
+      true
+    );
+
+  if (
+    JSON.stringify(recovery).length >=
+    JSON.stringify(normal).length
+  ) {
+    throw new Error(
+      'SENTINEL recovery context is not smaller than normal compact context.'
+    );
+  }
+
+  if (
+    recovery.phase1_audit_packet
+      .stock.critical_stock.length !== 3
+  ) {
+    throw new Error(
+      'SENTINEL recovery context dropped critical stock truth.'
+    );
+  }
+
+  if (
+    recovery.phase1_audit_packet
+      .stock.watch_stock[0].sku !==
+      'PLG617'
+  ) {
+    throw new Error(
+      'SENTINEL recovery context dropped current WATCH classification.'
+    );
+  }
+
+  if (
+    !fctSentinelIsOutputCompletionError_(
+      new Error(
+        'OpenAI output reached max_output_tokens before completing structured JSON.'
+      )
+    )
+  ) {
+    throw new Error(
+      'SENTINEL output-completion detector missed the exact production error.'
+    );
+  }
+
+  Logger.log(
+    'SENTINEL compact recovery guards PASS'
+  );
+  return true;
+}
 
 
 function fctSentinelStockClassification_(stock) {
