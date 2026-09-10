@@ -1,33 +1,37 @@
 # GitHub Migration Checklist
 
-## Already Mirrored
+## Migration Status
+
+**Live Apps Script source mirror completed on 2026-09-10.**
+
+The current Apps Script project was cloned with `clasp` into:
+
+`apps-script/live/`
+
+This folder is the direct live-source snapshot and is intentionally kept separate from the versioned/locked Phase-1 reference code under `apps-script/snapshots/`, `apps-script/runners/`, `apps-script/hierarchy/`, and `apps-script/orchestrator/`.
+
+## Mirrored
 
 - Phase-1 locked specialist snapshots/runners
 - SENTINEL / ORBIT / ATLAS locked hierarchy code
 - Phase-1 Final Orchestrator V5
+- current live Apps Script project snapshot under `apps-script/live/`
+- shared runtime files including AI config/clients, schema, runtime, report, runner and snapshot modules
+- `Code.js`
+- `TikTokOAuth.js`
+- runtime contract probe files
+- `appsscript.json`
 - Meta Ads legacy/source code available in migration workspace
-- Product/technical spec
+- product/technical spec
 - prior master handoff
 - regression/smoke-test baseline
 
-## Still Must Be Exported From Live Apps Script
+## Live Mirror Safety
 
-The following files were documented as installed in the live runtime but were not present in the migration workspace, so this repository must **not** yet be called a byte-for-byte mirror of the Apps Script project:
-
-- `AIConfig.gs`
-- `AgentSchema.gs`
-- `AgentConfig.gs`
-- `AgentPrompt.gs`
-- `AIClientOpenAI.gs`
-- `AIClientAnthropic.gs`
-- `AgentSnapshot.gs`
-- `AgentRuntime.gs`
-- `AgentReport.gs`
-- `AgentRunner.gs`
-- `Code.gs`
-- `TikTokOAuth.gs`
-
-Export these into `apps-script/runtime/` (or the appropriate module folder) before deleting/decommissioning the Apps Script project.
+- `.clasp.json` is intentionally excluded from Git and must remain local-only.
+- `appsscript.json` is tracked because it is project source/configuration, not a credential file.
+- Script Property values are not stored in Git.
+- The live mirror represents the Apps Script source as cloned on 2026-09-10. Future Apps Script-side edits must be pulled before assuming GitHub matches production.
 
 ## Credentials
 
@@ -42,21 +46,17 @@ Known property names include:
 
 Only names/placeholders belong in `.env.example`.
 
-## GitHub Initial Setup
+## Transitional Sync Workflow
 
-Recommended private repository name:
+GitHub is the durable source of truth. Apps Script remains a transitional production runtime.
 
-`founder-control-tower`
+Recommended flow:
 
-After creating the empty GitHub repository from the founder's account:
+1. before reconciling production, run `clasp pull` inside `apps-script/live/` to capture any live-side changes;
+2. review/compare changes in Git;
+3. make new development changes through GitHub/Codex rather than directly in Apps Script where possible;
+4. run deterministic/local tests before deployment;
+5. use `clasp push` only for reviewed and founder-approved production updates;
+6. never use uncontrolled two-way editing as the normal workflow.
 
-```bash
-git remote add origin https://github.com/<OWNER>/founder-control-tower.git
-git push -u origin main
-```
-
-Direct GitHub push requires an authenticated GitHub connector/CLI/session. The migration workspace that generated this baseline did not have GitHub authentication available.
-
-## Apps Script Sync During Transition
-
-Use `clasp` only as a transition tool if desired. Keep Apps Script source isolated under `apps-script/`; do not let Apps Script become the permanent domain layer.
+Do not decommission Apps Script until the replacement web/backend runtime has parity and reconciliation checks.

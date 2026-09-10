@@ -4,7 +4,19 @@ Last updated: **2026-09-10**
 
 ## Overall
 
-Founder Control Tower Phase 1 is **locked and validated**. The next workstream is repository-first productionization, dashboard, approval/action workflow, agent memory/playbooks, automations, and gradual migration away from Google Apps Script.
+Founder Control Tower Phase 1 is **locked and validated**. GitHub is now the durable code/documentation source of truth, and the current live Google Apps Script project has been captured under `apps-script/live/` using `clasp`. Apps Script remains the transitional live runtime while productionization and gradual web-app migration continue.
+
+## Repository / Live Runtime Status
+
+- GitHub repository: `modabid/founder-control-tower`
+- default branch: `main`
+- live Apps Script source mirror: `apps-script/live/`
+- `.clasp.json`: local-only / intentionally excluded from Git
+- `appsscript.json`: tracked
+- local Phase-1 regression suite: PASS
+- GitHub Phase 1 CI after live-runtime mirror commit: PASS
+
+The versioned locked Phase-1 reference code remains separate from the direct live-source mirror so future changes can be compared safely.
 
 ## Phase-1 Locked Agents
 
@@ -75,13 +87,19 @@ Spreadsheet ID:
 
 The workbook remains the live MVP data/control source during migration.
 
+## Migration Foundation Completed
+
+1. GitHub established as durable code/documentation source of truth.
+2. Current live Apps Script source exported into `apps-script/live/`.
+3. Local and GitHub Phase-1 regression tests passing.
+4. Live Apps Script and locked/versioned reference code kept separately for controlled reconciliation.
+
 ## Next Workstream
 
-1. Make GitHub the durable code/documentation source of truth.
-2. Export missing live Apps Script runtime files into this repository.
-3. Build Founder Dashboard on top of the locked Phase-1 contracts.
-4. Build ACTION_QUEUE + founder approval workflow.
-5. Add agent instruction/playbook memory with auditable founder rules.
-6. Add schedules/alerts while preserving no-autonomous-external-action governance.
-7. Extract portable domain logic from Apps Script into TypeScript.
-8. Introduce database/API/web app incrementally.
+1. Reconcile live mirror versus locked/versioned Phase-1 code and document any meaningful differences.
+2. Build Founder Dashboard on top of the locked Phase-1 contracts.
+3. Build ACTION_QUEUE + founder approval workflow.
+4. Add agent instruction/playbook memory with auditable founder rules.
+5. Add schedules/alerts while preserving no-autonomous-external-action governance.
+6. Extract portable domain logic from Apps Script into TypeScript.
+7. Introduce database/API/web app incrementally.
