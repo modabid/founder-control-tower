@@ -4,12 +4,19 @@ export type AccessTokenProvider = () => Promise<string>;
 export type FetchLike = (input: string, init?: RequestInit) => Promise<Response>;
 
 export class GoogleSheetsRestReader implements SheetRangeReader {
+  private readonly spreadsheetId: string;
+  private readonly getAccessToken: AccessTokenProvider;
+  private readonly fetchImpl: FetchLike;
+
   constructor(
-    private readonly spreadsheetId: string,
-    private readonly getAccessToken: AccessTokenProvider,
-    private readonly fetchImpl: FetchLike = fetch
+    spreadsheetId: string,
+    getAccessToken: AccessTokenProvider,
+    fetchImpl: FetchLike = fetch
   ) {
     if (!String(spreadsheetId || '').trim()) throw new Error('spreadsheetId is required.');
+    this.spreadsheetId = spreadsheetId;
+    this.getAccessToken = getAccessToken;
+    this.fetchImpl = fetchImpl;
   }
 
   async readRange(range: string): Promise<SheetMatrix> {
