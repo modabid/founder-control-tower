@@ -4,7 +4,9 @@ Last updated: **2026-09-10**
 
 ## Overall
 
-Founder Control Tower Phase 1 is **locked and validated**. GitHub is now the durable code/documentation source of truth, and the current live Google Apps Script project has been captured under `apps-script/live/` using `clasp`. Apps Script remains the transitional live runtime while productionization and gradual web-app migration continue.
+Founder Control Tower Phase 1 is **locked, validated, and deployed with GitHub/local/Apps Script source parity**. GitHub is the durable code/documentation source of truth. Google Apps Script remains the transitional live runtime.
+
+Phase 2 is now in development: **ACTION_QUEUE + Founder Approval Core**.
 
 ## Repository / Live Runtime Status
 
@@ -12,13 +14,11 @@ Founder Control Tower Phase 1 is **locked and validated**. GitHub is now the dur
 - default branch: `main`
 - live Apps Script source mirror: `apps-script/live/`
 - Phase-1 live-vs-locked mapped code parity: **12/12**
+- SENTINEL V11 parity correction: deployed to Apps Script on 2026-09-10 through controlled `clasp push`
+- post-deploy `clasp pull`: clean; no Git drift detected
 - `.clasp.json`: local-only / intentionally excluded from Git
 - `appsscript.json`: tracked
-- local Phase-1 regression suite: PASS
-- GitHub Phase 1 CI after initial live-runtime mirror commit: PASS
-- SENTINEL V11 parity correction: reviewed/tested in Git; not deployed to Apps Script until founder approval and controlled `clasp push`
-
-The versioned locked Phase-1 reference code remains separate from the direct live-source mirror so future changes can be compared safely.
+- Phase-1 local/GitHub regression suite: PASS
 
 ## Phase-1 Locked Agents
 
@@ -51,7 +51,7 @@ Reporting chain:
 - `AgentAtlasPhase1Runner_v3.gs`
 - `Phase1FinalOrchestrator_v5.gs`
 
-## Final Validation
+## Final Phase-1 Validation
 
 Final live hierarchy validation succeeded on 2026-09-10.
 
@@ -60,16 +60,9 @@ Final live hierarchy validation succeeded on 2026-09-10.
 - hierarchy AI calls: `3`
 - executed: `AG012 -> AG002 -> AG001`
 - Sentinel recovery: not required
+- V5 zero-AI cached replay: PASS
 
-Validated cached hierarchy IDs:
-
-- SENTINEL: `FCT-20260910-090752-3d74cf5b`
-- ORBIT: `FCT-20260910-090844-50898a9c`
-- ATLAS: `FCT-20260910-090936-e3382a98`
-
-V5 zero-AI cached replay: **PASS**.
-
-Governance repair confirmed that external ad action `Suspend ad scaling...` is normalized from `approval_required=false` to `true` without another model call.
+Governance repair confirmed that governed external recommendations cannot remain `approval_required=false` solely because of model phrasing/classification.
 
 ## Current Known Business Blockers / Controls
 
@@ -89,20 +82,31 @@ Spreadsheet ID:
 
 The workbook remains the live MVP data/control source during migration.
 
-## Migration Foundation Completed
+Existing `ACTION_QUEUE` is reused for Phase 2. V1 keeps the current 24-column A:X contract and does not add another tab or expand the grid.
 
-1. GitHub established as durable code/documentation source of truth.
-2. Current live Apps Script source exported into `apps-script/live/`.
-3. Local and GitHub Phase-1 regression tests passing.
-4. Live-vs-locked Phase-1 reconciliation completed at **12/12 parity**.
-5. Live Apps Script and locked/versioned reference code kept separately for controlled deployment and future drift detection.
+## Phase-2 V1 — Action Queue / Founder Approval Core
+
+Status: **IN DEVELOPMENT / NOT DEPLOYED**
+
+Planned/implemented contract on the Phase-2 branch:
+
+1. final ATLAS recommendations can be converted into deterministic queue records;
+2. duplicate open recommendations are suppressed;
+3. governed actions start `PENDING_FOUNDER / BLOCKED_APPROVAL`;
+4. internal no-external-commitment actions start `NOT_REQUIRED / READY_INTERNAL`;
+5. founder Approve/Reject/Modify changes queue state only and never executes the action;
+6. founder modification preserves the original record as `SUPERSEDED` and creates a replacement;
+7. preview uses cached Phase-1 output and requires no paid AI call;
+8. no executor is included in V1.
+
+See `docs/ACTION_QUEUE.md` and ADR-008.
 
 ## Next Workstream
 
-1. After founder approval, deploy the reviewed SENTINEL V11 parity correction to Apps Script through controlled `clasp push` and verify production source parity without paid AI calls.
-2. Build Founder Dashboard on top of the locked Phase-1 contracts.
-3. Build ACTION_QUEUE + founder approval workflow.
-4. Add agent instruction/playbook memory with auditable founder rules.
-5. Add schedules/alerts while preserving no-autonomous-external-action governance.
-6. Extract portable domain logic from Apps Script into TypeScript.
-7. Introduce database/API/web app incrementally.
+1. validate and review Phase-2 Action Queue / Founder Approval Core in GitHub CI;
+2. deploy only after founder approval;
+3. run no-write preview against cached Phase-1 output before any queue write;
+4. add founder-facing approval UI/dashboard controls;
+5. add permissioned executors one domain at a time, with pre-execution approval re-check and post-action SENTINEL verification;
+6. add agent instruction/playbook memory with auditable founder rules;
+7. extract portable domain logic into TypeScript and introduce database/API/web app incrementally.
