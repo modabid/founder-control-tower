@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-09-10 — Phase 3 Founder Web Dashboard Shell V1
+
+### Added
+
+- Responsive founder dashboard shell under `apps/web/` consuming the Phase-3 Founder Read Model contract.
+- Presentation-only rendering for P&L, terminal delivery success, courier receivable, data-quality blockers, pending approvals and dynamic stock risk.
+- Explicit offline/mock mode banner and fail-closed rendering fallback.
+- No duplicated business formulas in the UI; deterministic rules remain in `packages/domain` and reconciliation remains in `packages/data`.
+- Zero-network mock fixture and regression coverage for the dashboard shell.
+- `docs/WEB_DASHBOARD_SHELL.md` documenting the production integration boundary.
+
+### Deployment Boundary
+
+- This shell is not yet a live production web endpoint.
+- Approval mutations and business executors remain disabled.
+- No Google credential is exposed to the browser and no workbook write, paid AI call or external business action is introduced.
+
 ## 2026-09-10 — Phase 3 Read-Only Sheet / Founder API V1
 
 ### Added
