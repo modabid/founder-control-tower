@@ -1,0 +1,68 @@
+name: Phase 2 Daily Schedule Activation
+
+on:
+  push:
+    branches:
+      - ops/phase2-trigger-activation
+
+permissions:
+  contents: read
+
+jobs:
+  activate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FCT_SCRIPT_ID: 1gquskvwbH06I3ZgDQ28q9uY0U8VdV3X8BwPgdAG6UbOtAGTZLHV47LBL
+      CLASP_AUTH_JSON: ${{ secrets.FCT_CLASP_AUTH_JSON }}
+
+    steps:
+      - name: Checkout approved source
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run deterministic regression suite
+        run: npm test
+
+      - name: Prepare private clasp configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLASP_AUTH_JSON:-}" ]; then
+            echo "FCT_CLASP_AUTH_JSON is not configured."
+            exit 1
+          fi
+          AUTH_FILE="$RUNNER_TEMP/.clasprc.json"
+          node scripts/normalize-clasp-auth.cjs "$AUTH_FILE"
+          jq -e . "$AUTH_FILE" >/dev/null
+          cat > apps-script/live/.clasp.json <<EOF
+          {
+            "scriptId": "$FCT_SCRIPT_ID",
+            "rootDir": "."
+          }
+          EOF
+
+      - name: Zero-write schedule preflight
+        working-directory: apps-script/live
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y @google/clasp@3.4.1 -A "$RUNNER_TEMP/.clasprc.json" run-function inspectFctPhase2DailyCycleNoWrite
+
+      - name: Install duplicate-safe daily trigger
+        working-directory: apps-script/live
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y @google/clasp@3.4.1 -A "$RUNNER_TEMP/.clasprc.json" run-function installFctPhase2DailySchedule
+
+      - name: Verify schedule after install
+        working-directory: apps-script/live
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y @google/clasp@3.4.1 -A "$RUNNER_TEMP/.clasprc.json" run-function inspectFctPhase2DailyCycleNoWrite
