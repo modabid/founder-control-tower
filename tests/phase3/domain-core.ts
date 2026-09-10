@@ -15,6 +15,7 @@ import {
 assert.equal(finalDeliverySuccess({ delivered: 70, paid: 10, rrto: 20 }), 0.8);
 assert.equal(finalDeliverySuccess({ delivered: 0, paid: 0, rrto: 0 }), null);
 assert.equal(finalDeliverySuccess({ delivered: 5, paid: 5, rrto: 0 }), 1);
+assert.throws(() => finalDeliverySuccess({ delivered: -1, paid: 0, rrto: 0 }));
 
 assert.equal(isCourierReceivableStatus('Delivered'), true);
 assert.equal(isCourierReceivableStatus('Paid'), false);
@@ -40,6 +41,11 @@ assert.equal(real.status, 'READY');
 assert.equal(real.valueAed, 7500);
 assert.equal(operatingProfit(real, 2500).valueAed, 5000);
 assert.equal(operatingProfit(blocked, 2500).valueAed, null);
+assert.throws(() => contributionAfterActiveAds({
+  grossContributionAed: 100,
+  activeChannels: ['META'],
+  spendByChannelAed: { META: -1 }
+}));
 
 assert.equal(demandVelocity(4, 6), 6);
 assert.equal(demandVelocity(8, 6), 8);
@@ -50,9 +56,11 @@ assert.equal(stockGate(12, 2), 'CRITICAL_LE_3_DAYS');
 assert.equal(stockGate(30, 5), 'WATCH_LE_7_DAYS');
 assert.equal(stockGate(80, 10), 'PASS');
 assert.equal(stockGate(10, null), 'UNKNOWN_VELOCITY');
+assert.throws(() => physicalStockDays(-1, 1));
 
 assert.equal(lastMileScaleGate(0.699).pass, false);
 assert.equal(lastMileScaleGate(0.70).pass, true);
+assert.throws(() => lastMileScaleGate(1.01));
 assert.equal(scaleDecision([
   { key: 'DELIVERY', pass: true },
   { key: 'STOCK', pass: false, reason: 'LOW_STOCK' }
