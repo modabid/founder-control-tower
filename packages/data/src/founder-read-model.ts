@@ -13,6 +13,7 @@ import {
   numberValue,
   optionalNumber,
   recordsFromMatrix,
+  type SheetMatrix,
   type SheetRangeReader,
   type SheetRecord
 } from './sheet-reader.ts';
@@ -32,13 +33,26 @@ export const FCT_READ_RANGES = Object.freeze({
 const REQUIRED = Object.freeze({
   dailyPnl: ['Date', 'Orders_Picked', 'Delivered_Paid', 'Pending', 'RRTO', 'Delivered_Revenue_AED', 'Gross_Contribution_AED', 'Meta_Spend_AED', 'TikTok_Spend_AED', 'Courier_Receivable_AED', 'PNL_Status'],
   ordersCash: ['Pickup_Date', 'Shipment_ID', 'COD_AED', 'Status_Group', 'Is_Delivered', 'Is_Paid', 'Courier_Receivable_AED'],
-  ordersKuwait: ['Pickup Date', 'Staus', 'Shipment ID', 'In AED'],
   metaSpend: ['Date', 'Spend_AED', 'Mapping_Status'],
   payroll: ['Month', 'Gross_Payroll_AED', 'Net_Cash_AED', 'Payment_Status'],
   opex: ['Currency', 'Monthly_Equivalent_Native', 'Status'],
   subscriptions: ['Service', 'Active_Status', 'Observed_AED', 'Data_Quality'],
   actionQueue: ['Action_ID', 'Recommendation', 'Reason', 'Priority', 'Owner', 'Approval_Status', 'Execution_Status', 'Source', 'Created_At'],
   stock: ['Country', 'Product (SKU)', 'Available Stock', 'Avg / Day 7d', 'Avg / Day 14d', 'Demand Velocity Used', 'Available Stock Days', 'Stock Alert', 'Data Quality']
+});
+
+const KWT_COLUMN_INDEX = Object.freeze({
+  pickupDate: 0,
+  status: 1,
+  shipmentId: 4,
+  codAed: 21
+});
+
+const KWT_EXPECTED_HEADERS = Object.freeze({
+  pickupDate: 'Pickup Date',
+  status: 'Staus',
+  shipmentId: 'Shipment ID',
+  codAed: 'In AED'
 });
 
 export type FounderSourceBundle = {
@@ -118,6 +132,32 @@ export type FounderReadModel = {
   };
 };
 
+function parseKuwaitCashMatrix(matrix: SheetMatrix): SheetRecord[] {
+  if (!Array.isArray(matrix) || matrix.length === 0) {
+    throw new Error('RAW_KWT cash range is empty.');
+  }
+
+  const header = Array.isArray(matrix[0]) ? matrix[0] : [];
+  const checks: Array<[number, string]> = [
+    [KWT_COLUMN_INDEX.pickupDate, KWT_EXPECTED_HEADERS.pickupDate],
+    [KWT_COLUMN_INDEX.status, KWT_EXPECTED_HEADERS.status],
+    [KWT_COLUMN_INDEX.shipmentId, KWT_EXPECTED_HEADERS.shipmentId],
+    [KWT_COLUMN_INDEX.codAed, KWT_EXPECTED_HEADERS.codAed]
+  ];
+  checks.forEach(([index, expected]) => {
+    if (String(header[index] ?? '').trim() !== expected) {
+      throw new Error('RAW_KWT cash contract mismatch at column index ' + index + ': expected ' + expected + '.');
+    }
+  });
+
+  return matrix.slice(1).filter((row) => Array.isArray(row) && row.some((value) => value !== '' && value !== null && value !== undefined)).map((row) => ({
+    'Pickup Date': row[KWT_COLUMN_INDEX.pickupDate],
+    Staus: row[KWT_COLUMN_INDEX.status],
+    'Shipment ID': row[KWT_COLUMN_INDEX.shipmentId],
+    'In AED': row[KWT_COLUMN_INDEX.codAed]
+  }));
+}
+
 export async function loadFounderSourceBundle(reader: SheetRangeReader): Promise<FounderSourceBundle> {
   const [dailyPnl, ordersCash, ordersKuwait, metaSpend, payroll, opex, subscriptions, actionQueue, stock] = await Promise.all([
     reader.readRange(FCT_READ_RANGES.dailyPnl),
@@ -134,7 +174,7 @@ export async function loadFounderSourceBundle(reader: SheetRangeReader): Promise
   return {
     dailyPnl: recordsFromMatrix(dailyPnl, REQUIRED.dailyPnl),
     ordersCash: recordsFromMatrix(ordersCash, REQUIRED.ordersCash),
-    ordersKuwait: recordsFromMatrix(ordersKuwait, REQUIRED.ordersKuwait),
+    ordersKuwait: parseKuwaitCashMatrix(ordersKuwait),
     metaSpend: recordsFromMatrix(metaSpend, REQUIRED.metaSpend),
     payroll: recordsFromMatrix(payroll, REQUIRED.payroll),
     opex: recordsFromMatrix(opex, REQUIRED.opex),
@@ -200,7 +240,7 @@ function fixedCostSummary(bundle: FounderSourceBundle, month: string) {
     monthlyOpexAed: roundMoney(monthlyOpex),
     activeSaasAed: roundMoney(activeSaas),
     monthlyFixedBaselineAed: roundMoney(grossPayroll + monthlyOpex + activeSaas),
-    payrollEvidencePendingCount: evidencePending,
+    payrollPaymentEvidencePendingCount: evidencePending,
     activeSubscriptionMissingCostCount: missingActiveSaas,
     unconvertedNonAedOpexCount: unconvertedNonAed
   };
