@@ -1,0 +1,146 @@
+name: Vercel Controlled Production Deploy
+
+on:
+  push:
+    branches:
+      - deploy/vercel
+
+permissions:
+  contents: read
+
+concurrency:
+  group: founder-control-tower-vercel-production
+  cancel-in-progress: false
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      VERCEL_TOKEN: ${{ secrets.FCT_VERCEL_TOKEN }}
+      FCT_GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FCT_GOOGLE_SERVICE_ACCOUNT_JSON }}
+      FCT_WEB_ACCESS_TOKEN: ${{ secrets.FCT_WEB_ACCESS_TOKEN }}
+      FCT_SPREADSHEET_ID: 1H0NnKfTBP-772JLzTV0oU1CCfWYPIIfUa33tpuWDcjU
+      VERCEL_SCOPE: mohammed-abids-projects-ac04f63d
+      VERCEL_PROJECT: founder-control-tower
+      VERCEL_CLI_VERSION: 59.15.1
+
+    steps:
+      - name: Checkout founder-approved source
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run deterministic regression suite
+        run: npm test
+
+      - name: Validate production secrets
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in VERCEL_TOKEN FCT_GOOGLE_SERVICE_ACCOUNT_JSON FCT_WEB_ACCESS_TOKEN; do
+            if [ -z "${!name:-}" ]; then
+              echo "Required GitHub Actions secret for $name is not configured."
+              echo "Deployment stopped before changing Vercel production."
+              exit 1
+            fi
+          done
+          if [ "${#FCT_WEB_ACCESS_TOKEN}" -lt 24 ]; then
+            echo "FCT_WEB_ACCESS_TOKEN must be at least 24 characters."
+            exit 1
+          fi
+          printf '%s' "$FCT_GOOGLE_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/fct-google-service-account.json"
+          jq -e '
+            .type == "service_account" and
+            (.client_email | type == "string" and length > 0) and
+            (.private_key | type == "string" and contains("BEGIN PRIVATE KEY"))
+          ' "$RUNNER_TEMP/fct-google-service-account.json" >/dev/null
+
+      - name: Prepare single-line runtime credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          GOOGLE_JSON_B64="$(base64 -w 0 < "$RUNNER_TEMP/fct-google-service-account.json")"
+          echo "::add-mask::$GOOGLE_JSON_B64"
+          echo "FCT_GOOGLE_SERVICE_ACCOUNT_JSON_B64=$GOOGLE_JSON_B64" >> "$GITHUB_ENV"
+
+      - name: Link dedicated Founder Control Tower project
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "vercel@$VERCEL_CLI_VERSION" link \
+            --yes \
+            --project "$VERCEL_PROJECT" \
+            --scope "$VERCEL_SCOPE" \
+            --token "$VERCEL_TOKEN"
+
+      - name: Deploy founder-approved commit to production
+        id: deploy
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUTPUT="$(npx -y "vercel@$VERCEL_CLI_VERSION" deploy \
+            --prod \
+            --yes \
+            --scope "$VERCEL_SCOPE" \
+            --token "$VERCEL_TOKEN" \
+            --env "FCT_GOOGLE_SERVICE_ACCOUNT_JSON_B64=$FCT_GOOGLE_SERVICE_ACCOUNT_JSON_B64" \
+            --env "FCT_WEB_ACCESS_TOKEN=$FCT_WEB_ACCESS_TOKEN" \
+            --env "FCT_SPREADSHEET_ID=$FCT_SPREADSHEET_ID")"
+          DEPLOY_URL="$(printf '%s\n' "$OUTPUT" | grep -Eo 'https://[^[:space:]]+\.vercel\.app' | tail -n 1)"
+          if [ -z "$DEPLOY_URL" ]; then
+            echo "Unable to determine Vercel deployment URL."
+            exit 1
+          fi
+          echo "url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
+          echo "Production deployment created; beginning fail-closed verification."
+
+      - name: Verify production access and read-only contract
+        shell: bash
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          ROOT_CODE="$(curl --retry 4 --retry-delay 2 --retry-all-errors -sS -o "$RUNNER_TEMP/root.html" -w '%{http_code}' "$DEPLOY_URL/")"
+          test "$ROOT_CODE" = "200"
+          grep -q 'Founder Control Tower' "$RUNNER_TEMP/root.html"
+
+          UNAUTH_CODE="$(curl -sS -o "$RUNNER_TEMP/unauthorized.json" -w '%{http_code}' "$DEPLOY_URL/api/founder")"
+          test "$UNAUTH_CODE" = "401"
+          jq -e '.ok == false and .error == "UNAUTHORIZED"' "$RUNNER_TEMP/unauthorized.json" >/dev/null
+
+          POST_CODE="$(curl -sS -X POST -o "$RUNNER_TEMP/post.json" -w '%{http_code}' "$DEPLOY_URL/api/founder")"
+          test "$POST_CODE" = "405"
+          jq -e '.ok == false and .error == "METHOD_NOT_ALLOWED"' "$RUNNER_TEMP/post.json" >/dev/null
+
+          AUTH_CODE="$(curl --retry 4 --retry-delay 2 --retry-all-errors -sS \
+            -D "$RUNNER_TEMP/founder.headers" \
+            -o "$RUNNER_TEMP/founder.json" \
+            -w '%{http_code}' \
+            -H "Authorization: Bearer $FCT_WEB_ACCESS_TOKEN" \
+            -H 'Accept: application/json' \
+            "$DEPLOY_URL/api/founder")"
+          test "$AUTH_CODE" = "200"
+          jq -e '
+            .ok == true and
+            .data.status == "SUCCESS" and
+            .data.contractVersion == "1.0" and
+            .data.provenance.source == "GOOGLE_SHEETS_READ_ONLY" and
+            .data.provenance.writesMade == 0 and
+            .data.provenance.externalActionsExecuted == 0 and
+            .data.provenance.aiCallsMade == 0
+          ' "$RUNNER_TEMP/founder.json" >/dev/null
+          grep -qi '^cache-control:.*no-store' "$RUNNER_TEMP/founder.headers"
+          grep -qi '^vercel-cdn-cache-control:.*no-store' "$RUNNER_TEMP/founder.headers"
+
+      - name: Deployment summary
+        shell: bash
+        env:
+          DEPLOY_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          echo "Founder Control Tower production verification PASS."
+          echo "Deployment: $DEPLOY_URL"
+          echo "Verified: founder auth, GET-only API, live read, no-store, zero writes, zero external actions, zero request-path AI calls."
