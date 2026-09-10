@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-09-10 — Phase 2 Hands-Off Operating Surface
+
+### Added
+
+- Controlled GitHub Actions deployment workflow for Apps Script source/HEAD.
+- Dedicated `deploy/apps-script` production gate branch.
+- One-time private `FCT_CLASP_AUTH_JSON` credential contract; credentials remain outside Git.
+- Deterministic regression + preflight + `clasp push` + immediate `clasp pull` + Git drift verification in the deployment workflow.
+- `docs/HANDS_OFF_OPERATION.md` defining technical autonomy and concise Yes/No founder gates.
+- ADR-009 for hands-off technical operation with explicit founder-controlled external actions.
+- Auditable `config/agent-playbooks.json` registry plus an Apps Script runtime mirror and parity tests.
+- Phase-2 daily operating-cycle code that can run the cost-controlled Phase-1 hierarchy, refresh founder brief/history and queue recommendations without executing external actions.
+- Deterministic founder dashboard snapshot contract for future UI/API use.
+- Additional Phase-2 CI regression tests for deployment safety, playbook governance, daily-cycle safety and dashboard source contracts.
+
+### Not Activated Yet
+
+- The daily Apps Script trigger is code-complete but is not installed until the founder approves scheduling.
+- The automated Apps Script deploy workflow cannot deploy until the private GitHub Actions secret is configured once.
+- No paid infrastructure, database migration, external messaging or business executor was created.
+- A separate versioned Apps Script web-app deployment remains outside this source/HEAD deployment path.
+
 ## 2026-09-10 — Phase 2 Action Queue Core V1
 
 ### Added
