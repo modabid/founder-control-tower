@@ -393,7 +393,7 @@ export function buildFounderReadModel(bundle: FounderSourceBundle, asOfIso: stri
   if (cash.paidOrdersWithReceivableNonzero > 0) flags.push({ severity: 'FAIL', code: 'PAID_ORDER_HAS_RECEIVABLE', detail: cash.paidOrdersWithReceivableNonzero + ' PAID order(s) carry non-zero courier receivable.' });
   if (cash.currentOrderCount !== ordersPicked) flags.push({ severity: 'REVIEW', code: 'DAILY_PNL_VS_ORDER_COUNT_MISMATCH', detail: 'DAILY_PNL Orders_Picked differs from the merged UAE/Kuwait order-source count.' });
   if (cash.terminalSuccessCount !== deliveredPaid) flags.push({ severity: 'REVIEW', code: 'DAILY_PNL_VS_ORDER_SUCCESS_COUNT_MISMATCH', detail: 'DAILY_PNL Delivered_Paid differs from merged UAE/Kuwait terminal-success count.' });
-  if (fixed.payrollEvidencePendingCount > 0) flags.push({ severity: 'REVIEW', code: 'PAYROLL_PAYMENT_EVIDENCE_PENDING', detail: fixed.payrollEvidencePendingCount + ' payroll row(s) are accrued but payment evidence is pending.' });
+  if (fixed.payrollPaymentEvidencePendingCount > 0) flags.push({ severity: 'REVIEW', code: 'PAYROLL_PAYMENT_EVIDENCE_PENDING', detail: fixed.payrollPaymentEvidencePendingCount + ' payroll row(s) are accrued but payment evidence is pending.' });
   if (fixed.activeSubscriptionMissingCostCount > 0) flags.push({ severity: 'REVIEW', code: 'ACTIVE_SUBSCRIPTION_COST_MISSING', detail: fixed.activeSubscriptionMissingCostCount + ' active subscription row(s) have no observed AED cost.' });
   if (fixed.unconvertedNonAedOpexCount > 0) flags.push({ severity: 'REVIEW', code: 'NON_AED_OPEX_UNCONVERTED', detail: fixed.unconvertedNonAedOpexCount + ' non-AED OPEX row(s) are not included in AED fixed-cost baseline.' });
 
@@ -446,7 +446,7 @@ export function buildFounderReadModel(bundle: FounderSourceBundle, asOfIso: stri
       dataQualityStatus: flags.some((flag) => flag.severity === 'FAIL') ? 'FAIL' : (flags.length ? 'REVIEW' : 'PASS'),
       flags,
       metaMappingStatusCounts,
-      payrollPaymentEvidencePendingCount: fixed.payrollEvidencePendingCount,
+      payrollPaymentEvidencePendingCount: fixed.payrollPaymentEvidencePendingCount,
       activeSubscriptionMissingCostCount: fixed.activeSubscriptionMissingCostCount
     },
     approvals: {
