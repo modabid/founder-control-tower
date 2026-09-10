@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "scripts": {
-    "test": "node tests/phase1/orchestrator-smoke.js && node tests/phase1/approval-regression.js && node tests/phase2/action-queue-contract.js && node tests/phase2/validated-atlas-cache-bridge.js && node tests/phase2/deployment-workflow-contract.js && node tests/phase2/playbook-registry-contract.js && node tests/phase2/daily-cycle-contract.js && node tests/phase2/playbook-runtime-parity.js && node tests/phase2/founder-dashboard-contract.js && node tests/phase2/clasp-secret-normalizer.js && node --experimental-strip-types tests/phase3/domain-core.ts && node --experimental-strip-types tests/phase3/read-only-sheet-api.ts"
+    "test": "node tests/phase1/orchestrator-smoke.js && node tests/phase1/approval-regression.js && node tests/phase2/action-queue-contract.js && node tests/phase2/validated-atlas-cache-bridge.js && node tests/phase2/deployment-workflow-contract.js && node tests/phase2/playbook-registry-contract.js && node tests/phase2/daily-cycle-contract.js && node tests/phase2/playbook-runtime-parity.js && node tests/phase2/founder-dashboard-contract.js && node tests/phase2/clasp-secret-normalizer.js && node --experimental-strip-types tests/phase3/domain-core.ts && node --experimental-strip-types tests/phase3/read-only-sheet-api.ts && node --experimental-strip-types tests/phase3/founder-read-api.ts"
   },
   "engines": {
     "node": ">=22"
