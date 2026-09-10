@@ -52,10 +52,11 @@ assert.equal(demandVelocity(8, 6), 8);
 assert.equal(physicalStockDays(12, 6), 2);
 assert.equal(physicalStockDays(12, 0), null);
 assert.equal(stockGate(0, 0), 'OUT_OF_STOCK');
+assert.equal(stockGate(0, null), 'NO_RECENT_DEMAND');
 assert.equal(stockGate(12, 2), 'CRITICAL_LE_3_DAYS');
 assert.equal(stockGate(30, 5), 'WATCH_LE_7_DAYS');
 assert.equal(stockGate(80, 10), 'PASS');
-assert.equal(stockGate(10, null), 'UNKNOWN_VELOCITY');
+assert.equal(stockGate(10, null), 'NO_RECENT_DEMAND');
 assert.throws(() => physicalStockDays(-1, 1));
 
 assert.equal(lastMileScaleGate(0.699).pass, false);

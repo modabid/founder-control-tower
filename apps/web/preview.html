@@ -4,15 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <title>Founder Control Tower</title>
-  <meta name="description" content="Founder Control Tower live read-only operating dashboard">
+  <title>Founder Control Tower — Offline Preview</title>
+  <meta name="description" content="Founder Control Tower offline preview">
   <link rel="stylesheet" href="./styles.css">
-  <link rel="stylesheet" href="./live.css">
 </head>
 <body>
   <div id="app" aria-live="polite"></div>
-  <noscript>This dashboard requires JavaScript to load the founder read model.</noscript>
+  <noscript>This dashboard requires JavaScript to render the founder read model.</noscript>
+  <script src="./mock-founder-data.js"></script>
   <script src="./dashboard.js"></script>
-  <script src="./live-dashboard.js"></script>
+  <script src="./preview-bootstrap.js"></script>
 </body>
 </html>

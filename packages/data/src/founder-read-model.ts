@@ -13,6 +13,7 @@ import {
   numberValue,
   optionalNumber,
   recordsFromMatrix,
+  type SheetMatrix,
   type SheetRangeReader,
   type SheetRecord
 } from './sheet-reader.ts';
@@ -20,6 +21,7 @@ import {
 export const FCT_READ_RANGES = Object.freeze({
   dailyPnl: 'DAILY_PNL!A:R',
   ordersCash: 'ORDERS_MASTER!H:AL',
+  ordersKuwait: 'RAW_KWT!C:X',
   metaSpend: 'META_SPEND_LIVE!A:R',
   payroll: 'PAYROLL_LEDGER!A:P',
   opex: 'OPEX_CONTROL!A:P',
@@ -30,7 +32,7 @@ export const FCT_READ_RANGES = Object.freeze({
 
 const REQUIRED = Object.freeze({
   dailyPnl: ['Date', 'Orders_Picked', 'Delivered_Paid', 'Pending', 'RRTO', 'Delivered_Revenue_AED', 'Gross_Contribution_AED', 'Meta_Spend_AED', 'TikTok_Spend_AED', 'Courier_Receivable_AED', 'PNL_Status'],
-  ordersCash: ['Pickup_Date', 'COD_AED', 'Status_Group', 'Is_Delivered', 'Is_Paid', 'Courier_Receivable_AED'],
+  ordersCash: ['Pickup_Date', 'Shipment_ID', 'COD_AED', 'Status_Group', 'Is_Delivered', 'Is_Paid', 'Courier_Receivable_AED'],
   metaSpend: ['Date', 'Spend_AED', 'Mapping_Status'],
   payroll: ['Month', 'Gross_Payroll_AED', 'Net_Cash_AED', 'Payment_Status'],
   opex: ['Currency', 'Monthly_Equivalent_Native', 'Status'],
@@ -39,9 +41,24 @@ const REQUIRED = Object.freeze({
   stock: ['Country', 'Product (SKU)', 'Available Stock', 'Avg / Day 7d', 'Avg / Day 14d', 'Demand Velocity Used', 'Available Stock Days', 'Stock Alert', 'Data Quality']
 });
 
+const KWT_COLUMN_INDEX = Object.freeze({
+  pickupDate: 0,
+  status: 1,
+  shipmentId: 4,
+  codAed: 21
+});
+
+const KWT_EXPECTED_HEADERS = Object.freeze({
+  pickupDate: 'Pickup Date',
+  status: 'Staus',
+  shipmentId: 'Shipment ID',
+  codAed: 'In AED'
+});
+
 export type FounderSourceBundle = {
   dailyPnl: SheetRecord[];
   ordersCash: SheetRecord[];
+  ordersKuwait: SheetRecord[];
   metaSpend: SheetRecord[];
   payroll: SheetRecord[];
   opex: SheetRecord[];
@@ -115,10 +132,37 @@ export type FounderReadModel = {
   };
 };
 
+function parseKuwaitCashMatrix(matrix: SheetMatrix): SheetRecord[] {
+  if (!Array.isArray(matrix) || matrix.length === 0) {
+    throw new Error('RAW_KWT cash range is empty.');
+  }
+
+  const header = Array.isArray(matrix[0]) ? matrix[0] : [];
+  const checks: Array<[number, string]> = [
+    [KWT_COLUMN_INDEX.pickupDate, KWT_EXPECTED_HEADERS.pickupDate],
+    [KWT_COLUMN_INDEX.status, KWT_EXPECTED_HEADERS.status],
+    [KWT_COLUMN_INDEX.shipmentId, KWT_EXPECTED_HEADERS.shipmentId],
+    [KWT_COLUMN_INDEX.codAed, KWT_EXPECTED_HEADERS.codAed]
+  ];
+  checks.forEach(([index, expected]) => {
+    if (String(header[index] ?? '').trim() !== expected) {
+      throw new Error('RAW_KWT cash contract mismatch at column index ' + index + ': expected ' + expected + '.');
+    }
+  });
+
+  return matrix.slice(1).filter((row) => Array.isArray(row) && row.some((value) => value !== '' && value !== null && value !== undefined)).map((row) => ({
+    'Pickup Date': row[KWT_COLUMN_INDEX.pickupDate],
+    Staus: row[KWT_COLUMN_INDEX.status],
+    'Shipment ID': row[KWT_COLUMN_INDEX.shipmentId],
+    'In AED': row[KWT_COLUMN_INDEX.codAed]
+  }));
+}
+
 export async function loadFounderSourceBundle(reader: SheetRangeReader): Promise<FounderSourceBundle> {
-  const [dailyPnl, ordersCash, metaSpend, payroll, opex, subscriptions, actionQueue, stock] = await Promise.all([
+  const [dailyPnl, ordersCash, ordersKuwait, metaSpend, payroll, opex, subscriptions, actionQueue, stock] = await Promise.all([
     reader.readRange(FCT_READ_RANGES.dailyPnl),
     reader.readRange(FCT_READ_RANGES.ordersCash),
+    reader.readRange(FCT_READ_RANGES.ordersKuwait),
     reader.readRange(FCT_READ_RANGES.metaSpend),
     reader.readRange(FCT_READ_RANGES.payroll),
     reader.readRange(FCT_READ_RANGES.opex),
@@ -130,6 +174,7 @@ export async function loadFounderSourceBundle(reader: SheetRangeReader): Promise
   return {
     dailyPnl: recordsFromMatrix(dailyPnl, REQUIRED.dailyPnl),
     ordersCash: recordsFromMatrix(ordersCash, REQUIRED.ordersCash),
+    ordersKuwait: parseKuwaitCashMatrix(ordersKuwait),
     metaSpend: recordsFromMatrix(metaSpend, REQUIRED.metaSpend),
     payroll: recordsFromMatrix(payroll, REQUIRED.payroll),
     opex: recordsFromMatrix(opex, REQUIRED.opex),
@@ -195,14 +240,50 @@ function fixedCostSummary(bundle: FounderSourceBundle, month: string) {
     monthlyOpexAed: roundMoney(monthlyOpex),
     activeSaasAed: roundMoney(activeSaas),
     monthlyFixedBaselineAed: roundMoney(grossPayroll + monthlyOpex + activeSaas),
-    payrollEvidencePendingCount: evidencePending,
+    payrollPaymentEvidencePendingCount: evidencePending,
     activeSubscriptionMissingCostCount: missingActiveSaas,
     unconvertedNonAedOpexCount: unconvertedNonAed
   };
 }
 
-function cashSummary(rows: SheetRecord[], month: string) {
-  const current = rows.filter((row) => inMonth(row, 'Pickup_Date', month));
+function normalizeKuwaitCashRows(rows: SheetRecord[]): SheetRecord[] {
+  return rows.map((row) => {
+    const status = String(row.Staus ?? '').trim().toUpperCase();
+    const codAed = numberValue(row['In AED'] ?? 0, 'RAW_KWT In AED');
+    return {
+      Pickup_Date: row['Pickup Date'],
+      Shipment_ID: row['Shipment ID'],
+      COD_AED: codAed,
+      Status_Group: status,
+      Is_Delivered: status === 'DELIVERED' || status === 'PAID' ? 1 : 0,
+      Is_Paid: status === 'PAID' ? 1 : 0,
+      Courier_Receivable_AED: status === 'DELIVERED' ? codAed : 0
+    };
+  });
+}
+
+function mergeCashRows(masterRows: SheetRecord[], kuwaitRows: SheetRecord[]): SheetRecord[] {
+  const out: SheetRecord[] = [];
+  const shipmentIds = new Set<string>();
+
+  masterRows.forEach((row) => {
+    const shipmentId = String(row.Shipment_ID ?? '').trim();
+    if (shipmentId) shipmentIds.add(shipmentId);
+    out.push(row);
+  });
+
+  normalizeKuwaitCashRows(kuwaitRows).forEach((row) => {
+    const shipmentId = String(row.Shipment_ID ?? '').trim();
+    if (shipmentId && shipmentIds.has(shipmentId)) return;
+    if (shipmentId) shipmentIds.add(shipmentId);
+    out.push(row);
+  });
+
+  return out;
+}
+
+function cashSummary(masterRows: SheetRecord[], kuwaitRows: SheetRecord[], month: string) {
+  const current = mergeCashRows(masterRows, kuwaitRows).filter((row) => inMonth(row, 'Pickup_Date', month));
   let paidCount = 0;
   let deliveredUnpaidCount = 0;
   let paidCod = 0;
@@ -229,6 +310,7 @@ function cashSummary(rows: SheetRecord[], month: string) {
   });
 
   return {
+    currentOrderCount: current.length,
     paidCount,
     deliveredUnpaidCount,
     paidCodAed: roundMoney(paidCod),
@@ -272,9 +354,10 @@ export function buildFounderReadModel(bundle: FounderSourceBundle, asOfIso: stri
   const month = currentMonthKey(asOfIso);
   const daily = bundle.dailyPnl.filter((row) => inMonth(row, 'Date', month));
   const meta = bundle.metaSpend.filter((row) => inMonth(row, 'Date', month));
-  const cash = cashSummary(bundle.ordersCash, month);
+  const cash = cashSummary(bundle.ordersCash, bundle.ordersKuwait, month);
   const fixed = fixedCostSummary(bundle, month);
 
+  const ordersPicked = sum(daily, 'Orders_Picked');
   const deliveredPaid = sum(daily, 'Delivered_Paid');
   const rrto = sum(daily, 'RRTO');
   const finalizedSuccess = finalDeliverySuccess({ delivered: deliveredPaid, paid: 0, rrto });
@@ -308,8 +391,9 @@ export function buildFounderReadModel(bundle: FounderSourceBundle, asOfIso: stri
   if (tiktokMissing) flags.push({ severity: 'FAIL', code: 'TIKTOK_SPEND_MISSING', detail: 'Real Contribution and Operating Profit remain blocked until live TikTok spend is available.' });
   if (Math.abs(metaAllocationGap) > 0.01) flags.push({ severity: 'REVIEW', code: 'META_TOTAL_VS_PNL_ALLOCATION_GAP', detail: 'META_SPEND_LIVE differs from Meta spend represented in DAILY_PNL.' });
   if (cash.paidOrdersWithReceivableNonzero > 0) flags.push({ severity: 'FAIL', code: 'PAID_ORDER_HAS_RECEIVABLE', detail: cash.paidOrdersWithReceivableNonzero + ' PAID order(s) carry non-zero courier receivable.' });
-  if (cash.terminalSuccessCount !== deliveredPaid) flags.push({ severity: 'REVIEW', code: 'DAILY_PNL_VS_ORDER_SUCCESS_COUNT_MISMATCH', detail: 'DAILY_PNL Delivered_Paid differs from ORDERS_MASTER terminal-success count.' });
-  if (fixed.payrollEvidencePendingCount > 0) flags.push({ severity: 'REVIEW', code: 'PAYROLL_PAYMENT_EVIDENCE_PENDING', detail: fixed.payrollEvidencePendingCount + ' payroll row(s) are accrued but payment evidence is pending.' });
+  if (cash.currentOrderCount !== ordersPicked) flags.push({ severity: 'REVIEW', code: 'DAILY_PNL_VS_ORDER_COUNT_MISMATCH', detail: 'DAILY_PNL Orders_Picked differs from the merged UAE/Kuwait order-source count.' });
+  if (cash.terminalSuccessCount !== deliveredPaid) flags.push({ severity: 'REVIEW', code: 'DAILY_PNL_VS_ORDER_SUCCESS_COUNT_MISMATCH', detail: 'DAILY_PNL Delivered_Paid differs from merged UAE/Kuwait terminal-success count.' });
+  if (fixed.payrollPaymentEvidencePendingCount > 0) flags.push({ severity: 'REVIEW', code: 'PAYROLL_PAYMENT_EVIDENCE_PENDING', detail: fixed.payrollPaymentEvidencePendingCount + ' payroll row(s) are accrued but payment evidence is pending.' });
   if (fixed.activeSubscriptionMissingCostCount > 0) flags.push({ severity: 'REVIEW', code: 'ACTIVE_SUBSCRIPTION_COST_MISSING', detail: fixed.activeSubscriptionMissingCostCount + ' active subscription row(s) have no observed AED cost.' });
   if (fixed.unconvertedNonAedOpexCount > 0) flags.push({ severity: 'REVIEW', code: 'NON_AED_OPEX_UNCONVERTED', detail: fixed.unconvertedNonAedOpexCount + ' non-AED OPEX row(s) are not included in AED fixed-cost baseline.' });
 
@@ -336,7 +420,7 @@ export function buildFounderReadModel(bundle: FounderSourceBundle, asOfIso: stri
       metaLatestDate: metaLatest
     },
     economics: {
-      ordersPickedMtd: sum(daily, 'Orders_Picked'),
+      ordersPickedMtd: ordersPicked,
       deliveredPaidMtd: deliveredPaid,
       pendingMtd: sum(daily, 'Pending'),
       rrtoMtd: rrto,
@@ -362,7 +446,7 @@ export function buildFounderReadModel(bundle: FounderSourceBundle, asOfIso: stri
       dataQualityStatus: flags.some((flag) => flag.severity === 'FAIL') ? 'FAIL' : (flags.length ? 'REVIEW' : 'PASS'),
       flags,
       metaMappingStatusCounts,
-      payrollPaymentEvidencePendingCount: fixed.payrollEvidencePendingCount,
+      payrollPaymentEvidencePendingCount: fixed.payrollPaymentEvidencePendingCount,
       activeSubscriptionMissingCostCount: fixed.activeSubscriptionMissingCostCount
     },
     approvals: {

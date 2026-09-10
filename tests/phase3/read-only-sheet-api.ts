@@ -17,6 +17,11 @@ const fixtures: Record<string, SheetMatrix> = {
     [46266,'PAID','Store A','R1','AWB1','PLG1','P1',1,'','','','','','','','','','','','',59,59,11.55,13,'PAID',11.55,1,1,1,0,0],
     [46267,'DELIVERED','Store A','R2','AWB2','PLG2','P2',1,'','','','','','','','','','','','',69,69,11.55,12,'DELIVERED',11.55,1,1,0,0,69]
   ],
+  [FCT_READ_RANGES.ordersKuwait]: [
+    ['Pickup Date','Staus','Reference ID','Sender Name','Shipment ID','SKU-001','Product Name','QTY','SKU-002','Product Name','QTY','SKU-003','Product Name','QTY','SKU-004','Product Name','QTY','SKU-005','Product Name','Mobile No.','COD Amount','In AED'],
+    [46267,'Delivered','#K1','Store K','KWT1','PLG3','P3',1,'','','','','','','','','','','','',9.99,118.55],
+    [46267,'Delivered','#DUP','Store K','AWB2','PLG2','P2',1,'','','','','','','','','','','','',99.99,999]
+  ],
   [FCT_READ_RANGES.metaSpend]: [
     ['Date','Portfolio','Account_ID','Account_Name','Currency','Campaign_ID','Campaign_Name','Spend_Native','FX_to_AED','Spend_AED','Store','SKU','Product_Name','Country','Mapping_Status','Source','Key','Data_Quality_Flag'],
     [46266,'P','A1','Account','AED','C1','Campaign',61.52,1,61.52,'Store A','PLG1','P1','United Arab Emirates','VALIDATED','META LIVE','K1','OK'],
@@ -47,7 +52,8 @@ const fixtures: Record<string, SheetMatrix> = {
   [FCT_READ_RANGES.stock]: [
     ['Country','Product (SKU)','Available Stock','Confirmed Courier Stock','Pickup Last 7d','Avg / Day 7d','Pickup Last 14d','Avg / Day 14d','Demand Velocity Used','Available Stock Days','Stock Alert','Recommended Action','Data Quality'],
     ['United Arab Emirates','Product 1 (PLG1)',2,0,7,1,28,2,2,1,'ACT NOW','Review','OK'],
-    ['Kuwait','Product 2 (PLG2)',10,0,7,1,28,2,2,5,'WATCH','Review','OK']
+    ['Kuwait','Product 2 (PLG2)',10,0,7,1,28,2,2,5,'WATCH','Review','OK'],
+    ['United Arab Emirates','Dormant Product (PLG0)',0,0,0,0,0,0,0,'','NO RECENT DEMAND','Monitor','OK']
   ]
 };
 
@@ -64,8 +70,8 @@ class FixtureReader implements SheetRangeReader {
 const reader = new FixtureReader();
 const model = await getFounderReadModel(reader, '2026-09-10T08:15:00+04:00');
 
-assert.equal(reader.calls.length, 8);
-assert.equal(new Set(reader.calls).size, 8);
+assert.equal(reader.calls.length, 9);
+assert.equal(new Set(reader.calls).size, 9);
 assert.equal(model.status, 'SUCCESS');
 assert.equal(model.economics.ordersPickedMtd, 86);
 assert.equal(model.economics.deliveredPaidMtd, 53);
@@ -73,9 +79,9 @@ assert.equal(model.economics.rrtoMtd, 28);
 assert.equal(model.economics.finalizedDeliverySuccess, 53 / 81);
 assert.equal(model.economics.deliveredRevenueAed, 4053.69);
 assert.equal(model.economics.grossContributionAed, 2539.53);
-assert.equal(model.economics.courierReceivableAed, 69);
+assert.equal(model.economics.courierReceivableAed, 187.55);
 assert.equal(model.economics.paidCount, 1);
-assert.equal(model.economics.deliveredUnpaidCount, 1);
+assert.equal(model.economics.deliveredUnpaidCount, 2);
 assert.equal(model.economics.metaPlatformSpendAed, 118.86);
 assert.equal(model.economics.realContributionAed, null);
 assert.equal(model.economics.realContributionStatus, 'BLOCKED_MISSING_TIKTOK_SPEND');
@@ -93,6 +99,7 @@ assert.equal(model.provenance.aiCallsMade, 0);
 assert.equal(model.controls.dataQualityStatus, 'FAIL');
 assert.ok(model.controls.flags.some((flag) => flag.code === 'TIKTOK_SPEND_MISSING'));
 assert.ok(model.controls.flags.some((flag) => flag.code === 'META_TOTAL_VS_PNL_ALLOCATION_GAP'));
+assert.ok(model.controls.flags.some((flag) => flag.code === 'DAILY_PNL_VS_ORDER_COUNT_MISMATCH'));
 
 let requestedUrl = '';
 let requestedInit: RequestInit | undefined;

@@ -6,6 +6,7 @@ import type { SheetMatrix, SheetRangeReader } from '../../packages/data/src/shee
 const headers: Record<string, SheetMatrix> = {
   [FCT_READ_RANGES.dailyPnl]: [['Date','Country','Orders_Picked','Delivered_Paid','Pending','RRTO','Delivery_Success','Delivered_Revenue_AED','Product_Cost_AED','Delivery_Cost_AED','RTO_Cost_AED','Gross_Contribution_AED','Meta_Spend_AED','TikTok_Spend_AED','Contribution_After_Meta_AED','Real_Contribution_Profit_AED','Courier_Receivable_AED','PNL_Status']],
   [FCT_READ_RANGES.ordersCash]: [['Pickup_Date','Raw_Status','Store','Reference_ID','Shipment_ID','SKU_1','Product_1','Qty_1','SKU_2','Product_2','Qty_2','SKU_3','Product_3','Qty_3','SKU_4','Product_4','Qty_4','SKU_5','Product_5','Qty_5','COD_Local','COD_AED','Raw_Delivery_Cost_AED','Product_Cost_AED','Status_Group','Delivery_Cost_AED','Is_Finalized','Is_Delivered','Is_Paid','Is_RRTO','Courier_Receivable_AED']],
+  [FCT_READ_RANGES.ordersKuwait]: [['Pickup Date','Staus','Reference ID','Sender Name','Shipment ID','SKU-001','Product Name','QTY','SKU-002','Product Name','QTY','SKU-003','Product Name','QTY','SKU-004','Product Name','QTY','SKU-005','Product Name','Mobile No.','COD Amount','In AED']],
   [FCT_READ_RANGES.metaSpend]: [['Date','Portfolio','Account_ID','Account_Name','Currency','Campaign_ID','Campaign_Name','Spend_Native','FX_to_AED','Spend_AED','Store','SKU','Product_Name','Country','Mapping_Status','Source','Key','Data_Quality_Flag']],
   [FCT_READ_RANGES.payroll]: [['Month','Pay_Date','Staff_ID','Gross_Native','Commission_Native','Advance_Recovery_Native','Net_Cash_Paid_Native','Currency','FX_to_AED','Gross_Payroll_AED','Net_Cash_AED','Payment_Method','Payment_Reference','Payment_Status','Source','Notes']],
   [FCT_READ_RANGES.opex]: [['Expense_ID','Expense','Category','Amount_Native','Currency','Frequency','Monthly_Equivalent_Native','AED_Normalization_Method','Payment_Day','Payment_Method','Cost_Center','VAT_Evidence','Source','Status','Effective_From','Notes']],
@@ -60,7 +61,7 @@ assert.equal(ok.body.ok, true);
 assert.equal(ok.body.data?.provenance.writesMade, 0);
 assert.equal(ok.body.data?.provenance.externalActionsExecuted, 0);
 assert.equal(ok.body.data?.provenance.aiCallsMade, 0);
-assert.equal(reader.calls, 8);
+assert.equal(reader.calls, 9);
 assert.match(ok.headers['Cache-Control'], /no-store/);
 
 const failingReader = new CountingReader(true);
