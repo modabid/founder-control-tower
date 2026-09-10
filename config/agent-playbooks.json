@@ -1,0 +1,126 @@
+{
+  "registry_version": "2026-09-10-PB-V1",
+  "status": "ACTIVE",
+  "rules": [
+    {
+      "rule_id": "PB-GOV-001",
+      "agent_id": "ALL",
+      "domain": "GOVERNANCE",
+      "instruction": "Deterministic normalized/source/control data outranks deterministic alerts/reconciliation, which outranks founder snapshot, which outranks AI interpretation.",
+      "source": "docs/GOVERNANCE.md",
+      "effective_date": "2026-09-10",
+      "status": "ACTIVE",
+      "may_override_locked_rule": false
+    },
+    {
+      "rule_id": "PB-GOV-002",
+      "agent_id": "ALL",
+      "domain": "GOVERNANCE",
+      "instruction": "When a material fact is ambiguous or missing, ASK/HOLD and do not guess.",
+      "source": "docs/GOVERNANCE.md",
+      "effective_date": "2026-09-10",
+      "status": "ACTIVE",
+      "may_override_locked_rule": false
+    },
+    {
+      "rule_id": "PB-GOV-003",
+      "agent_id": "ALL",
+      "domain": "GOVERNANCE",
+      "instruction": "External actions, commitments and deployments require founder approval; internal analysis/reconciliation may proceed without external commitment.",
+      "source": "docs/GOVERNANCE.md",
+      "effective_date": "2026-09-10",
+      "status": "ACTIVE",
+      "may_override_locked_rule": false
+    },
+    {
+      "rule_id": "PB-LEDGER-001",
+      "agent_id": "AG003",
+      "domain": "FINANCE_CASH",
+      "instruction": "Delivered does not imply Paid. Delivered-but-unpaid COD is courier receivable; cash and profit remain separate.",
+      "source": "docs/BUSINESS_RULES.md",
+      "effective_date": "2026-09-10",
+      "status": "ACTIVE",
+      "may_override_locked_rule": false
+    },
+    {
+      "rule_id": "PB-SCALE-001",
+      "agent_id": "AG004",
+      "domain": "ADS_GROWTH",
+      "instruction": "Never scale from ROAS alone; require delivery-adjusted economics, all active ad channels, delivery success, physical stock days, cash control and freshness.",
+      "source": "docs/BUSINESS_RULES.md",
+      "effective_date": "2026-09-10",
+      "status": "ACTIVE",
+      "may_override_locked_rule": false
+    },
+    {
+      "rule_id": "PB-SCALE-002",
+      "agent_id": "AG004",
+      "domain": "ADS_GROWTH",
+      "instruction": "If TikTok is active and TikTok spend is missing, final Real Contribution, Operating Profit and final SCALE go/no-go stay blocked.",
+      "source": "docs/BUSINESS_RULES.md",
+      "effective_date": "2026-09-10",
+      "status": "ACTIVE",
+      "may_override_locked_rule": false
+    },
+    {
+      "rule_id": "PB-ROUTE-001",
+      "agent_id": "AG005",
+      "domain": "LOGISTICS_COURIER",
+      "instruction": "Last Mile finalized delivery success must be at least 70% for the scale gate; retain freshness/staleness qualifiers and do not infer product-to-courier exposure when absent.",
+      "source": "docs/BUSINESS_RULES.md",
+      "effective_date": "2026-09-10",
+      "status": "ACTIVE",
+      "may_override_locked_rule": false
+    },
+    {
+      "rule_id": "PB-STOCK-001",
+      "agent_id": "AG006",
+      "domain": "INVENTORY",
+      "instruction": "Velocity is max(7-day average pickup, 14-day average pickup); physical available stock is authoritative and RRTO is not available until physically received.",
+      "source": "docs/BUSINESS_RULES.md",
+      "effective_date": "2026-09-10",
+      "status": "ACTIVE",
+      "may_override_locked_rule": false
+    },
+    {
+      "rule_id": "PB-STOCK-002",
+      "agent_id": "AG006",
+      "domain": "INVENTORY",
+      "instruction": "Do not invent inbound PO, ETA, MOQ, supplier lead time or reorder quantity; stock severity must be dynamic from the current deterministic packet.",
+      "source": "docs/BUSINESS_RULES.md",
+      "effective_date": "2026-09-10",
+      "status": "ACTIVE",
+      "may_override_locked_rule": false
+    },
+    {
+      "rule_id": "PB-SENTINEL-001",
+      "agent_id": "AG012",
+      "domain": "AUDIT_DATA_QUALITY",
+      "instruction": "An empty DATA_QUALITY table does not prove clean data; challenge unsupported conclusions against deterministic source truth.",
+      "source": "docs/GOVERNANCE.md",
+      "effective_date": "2026-09-10",
+      "status": "ACTIVE",
+      "may_override_locked_rule": false
+    },
+    {
+      "rule_id": "PB-ORBIT-001",
+      "agent_id": "AG002",
+      "domain": "SUPERVISION",
+      "instruction": "Deduplicate and rank material issues, preserve SENTINEL blocks and do not turn unresolved evidence gaps into confident decisions.",
+      "source": "docs/AGENT_REGISTRY.md",
+      "effective_date": "2026-09-10",
+      "status": "ACTIVE",
+      "may_override_locked_rule": false
+    },
+    {
+      "rule_id": "PB-ATLAS-001",
+      "agent_id": "AG001",
+      "domain": "FOUNDER_DECISION",
+      "instruction": "Present the founder with prioritized decisions and approval needs; do not execute governed actions.",
+      "source": "docs/AGENT_REGISTRY.md",
+      "effective_date": "2026-09-10",
+      "status": "ACTIVE",
+      "may_override_locked_rule": false
+    }
+  ]
+}
