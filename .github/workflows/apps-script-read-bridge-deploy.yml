@@ -1,0 +1,144 @@
+name: Apps Script Read Bridge Controlled Deploy
+
+on:
+  push:
+    branches:
+      - deploy/apps-script-web
+
+permissions:
+  contents: read
+
+concurrency:
+  group: founder-control-tower-apps-script-read-bridge-production
+  cancel-in-progress: false
+
+jobs:
+  validate-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      FCT_SCRIPT_ID: 1gquskvwbH06I3ZgDQ28q9uY0U8VdV3X8BwPgdAG6UbOtAGTZLHV47LBL
+      CLASP_AUTH_JSON: ${{ secrets.FCT_CLASP_AUTH_JSON }}
+      FCT_APPS_SCRIPT_READ_TOKEN: ${{ secrets.FCT_APPS_SCRIPT_READ_TOKEN }}
+      CLASP_VERSION: 3.4.1
+
+    steps:
+      - name: Checkout founder-approved source
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run deterministic regression suite
+        run: npm test
+
+      - name: Validate private deployment inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLASP_AUTH_JSON:-}" ]; then
+            echo "FCT_CLASP_AUTH_JSON is not configured."
+            exit 1
+          fi
+          if [ -z "${FCT_APPS_SCRIPT_READ_TOKEN:-}" ] || [ "${#FCT_APPS_SCRIPT_READ_TOKEN}" -lt 32 ]; then
+            echo "FCT_APPS_SCRIPT_READ_TOKEN must be configured and at least 32 characters."
+            exit 1
+          fi
+
+      - name: Prepare private clasp configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH_FILE="$RUNNER_TEMP/.clasprc.json"
+          node scripts/normalize-clasp-auth.cjs "$AUTH_FILE"
+          jq -e . "$AUTH_FILE" >/dev/null
+          cat > apps-script/live/.clasp.json <<EOF
+          {
+            "scriptId": "$FCT_SCRIPT_ID",
+            "rootDir": "."
+          }
+          EOF
+          jq -e . apps-script/live/.clasp.json >/dev/null
+
+      - name: Push reviewed source to Apps Script HEAD
+        working-directory: apps-script/live
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "@google/clasp@$CLASP_VERSION" -A "$RUNNER_TEMP/.clasprc.json" push
+
+      - name: Create or update versioned read bridge deployment
+        id: deploy
+        working-directory: apps-script/live
+        shell: bash
+        run: |
+          set -euo pipefail
+          REGISTRY="$GITHUB_WORKSPACE/config/apps-script-read-bridge.json"
+          DEPLOYMENT_ID="$(jq -r '.deploymentId // ""' "$REGISTRY")"
+          DESCRIPTION="$(jq -r '.description // "FCT_READ_BRIDGE_PROD"' "$REGISTRY")"
+
+          if [ -n "$DEPLOYMENT_ID" ]; then
+            OUTPUT="$(npx -y "@google/clasp@$CLASP_VERSION" -A "$RUNNER_TEMP/.clasprc.json" create-deployment --deploymentId "$DEPLOYMENT_ID" --description "$DESCRIPTION")"
+          else
+            OUTPUT="$(npx -y "@google/clasp@$CLASP_VERSION" -A "$RUNNER_TEMP/.clasprc.json" create-deployment --description "$DESCRIPTION")"
+            DEPLOYMENT_ID="$(printf '%s\n' "$OUTPUT" | grep -Eo 'AK[A-Za-z0-9_-]{20,}' | tail -n 1)"
+          fi
+
+          if [ -z "$DEPLOYMENT_ID" ]; then
+            echo "Unable to determine Apps Script web deployment ID."
+            exit 1
+          fi
+          BRIDGE_URL="https://script.google.com/macros/s/$DEPLOYMENT_ID/exec"
+          echo "deployment_id=$DEPLOYMENT_ID" >> "$GITHUB_OUTPUT"
+          echo "url=$BRIDGE_URL" >> "$GITHUB_OUTPUT"
+          echo "Versioned read bridge deployment created/updated."
+
+      - name: Verify token-gated read-only bridge
+        shell: bash
+        env:
+          BRIDGE_URL: ${{ steps.deploy.outputs.url }}
+        run: |
+          set -euo pipefail
+          case "$BRIDGE_URL" in
+            https://script.google.com/macros/s/*/exec) ;;
+            *) echo "Unexpected Apps Script bridge URL."; exit 1 ;;
+          esac
+
+          RESPONSE_FILE="$RUNNER_TEMP/bridge.json"
+          curl --retry 4 --retry-delay 2 --retry-all-errors -sS -L \
+            -H 'Content-Type: application/json' \
+            --data "$(jq -nc --arg token "$FCT_APPS_SCRIPT_READ_TOKEN" '{action:"READ_FOUNDER_SOURCE_V1",token:$token}')" \
+            "$BRIDGE_URL" > "$RESPONSE_FILE"
+
+          jq -e '
+            .ok == true and
+            .contractVersion == "1.0" and
+            .provenance.source == "APPS_SCRIPT_READ_BRIDGE" and
+            .provenance.writesMade == 0 and
+            .provenance.externalActionsExecuted == 0 and
+            .provenance.aiCallsMade == 0 and
+            (.ranges["DAILY_PNL!A:R"] | type == "array") and
+            (.ranges["ACTION_QUEUE!A:X"] | type == "array")
+          ' "$RESPONSE_FILE" >/dev/null
+
+      - name: Pull back and verify source parity
+        working-directory: apps-script/live
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "@google/clasp@$CLASP_VERSION" -A "$RUNNER_TEMP/.clasprc.json" pull
+          rm -f .clasp.json
+          git diff --exit-code -- .
+
+      - name: Deployment summary
+        shell: bash
+        env:
+          BRIDGE_URL: ${{ steps.deploy.outputs.url }}
+          DEPLOYMENT_ID: ${{ steps.deploy.outputs.deployment_id }}
+        run: |
+          echo "Apps Script read bridge verification PASS."
+          echo "Deployment ID: $DEPLOYMENT_ID"
+          echo "Bridge URL: $BRIDGE_URL"
+          echo "Verified: token gate, allow-listed read source, zero writes, zero external actions, zero AI calls."
