@@ -28,6 +28,7 @@
 - Registered the verified deployment in `config/apps-script-read-bridge.json`.
 - Added a no-deploy Vercel readiness preflight to verify required GitHub secrets and bridge registry consistency before the separate production promotion gate.
 - Preflight run `34603857231` passed deterministic tests and stopped before any Vercel action because `FCT_WEB_ACCESS_TOKEN` is not configured.
+- After the founder configured `FCT_WEB_ACCESS_TOKEN`, attempt 2 passed all secret-length and registered-bridge consistency checks without creating a Vercel candidate or changing production.
 
 ### Deployment Boundary
 

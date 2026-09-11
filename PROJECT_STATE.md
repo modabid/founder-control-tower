@@ -125,17 +125,17 @@ Founder approved and a **separate** Vercel project was created:
 
 ### Vercel Readiness Preflight
 
-No-deploy preflight run `34603857231` ran after the verified Apps Script bridge was registered:
+No-deploy preflight run `34603857231`, attempt 2, completed successfully after the founder configured `FCT_WEB_ACCESS_TOKEN`:
 
 - full deterministic regression suite: **PASS**
-- registered bridge ID/URL consistency: available to the gate
+- registered bridge ID/URL consistency: **PASS**
 - `FCT_VERCEL_TOKEN`: configured
 - `FCT_APPS_SCRIPT_READ_TOKEN`: configured
-- `FCT_WEB_ACCESS_TOKEN`: **MISSING**
+- `FCT_WEB_ACCESS_TOKEN`: configured and length-valid
 - Vercel candidate created: **NO**
 - Vercel production changed: **NO**
 
-Current blocker: the founder must create the private GitHub Actions secret `FCT_WEB_ACCESS_TOKEN` with at least 24 high-entropy characters. After it is saved, rerun the same no-deploy preflight.
+Current blocker: the separate founder Yes / No approval for the `deploy/vercel` candidate-verification-production-promotion gate.
 
 ## No-New-Billing Web Read Path — VERIFIED / REGISTERED
 
@@ -229,11 +229,10 @@ Because verification failed:
 
 Before live founder production can be marked READY:
 
-1. founder configures missing `FCT_WEB_ACCESS_TOKEN` (minimum 24 high-entropy characters), then rerun the no-deploy Vercel readiness preflight;
-2. obtain the separate founder Yes / No approval for Vercel production promotion;
-3. run `deploy/vercel` and require candidate founder auth, GET-only API, live bridge read, no-store and zero-side-effect checks before promotion;
-4. independently verify the promoted production deployment;
-5. mark production READY only after all checks pass.
+1. obtain the separate founder Yes / No approval for Vercel production promotion;
+2. run `deploy/vercel` and require candidate founder auth, GET-only API, live bridge read, no-store and zero-side-effect checks before promotion;
+3. independently verify the promoted production deployment;
+4. mark production READY only after all checks pass.
 
 No Google Cloud billing account/service account is required for this route.
 
