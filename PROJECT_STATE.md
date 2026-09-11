@@ -123,7 +123,7 @@ Founder approved and a **separate** Vercel project was created:
 
 `FCT_VERCEL_TOKEN` has been configured by the founder as a private GitHub Actions secret.
 
-## No-New-Billing Web Read Path — MERGED / DEPLOYMENT VERIFICATION BLOCKED
+## No-New-Billing Web Read Path — MERGED / GOOGLE ACCESS BLOCKED
 
 The founder declined adding a Google Cloud payment method solely for a new service account. ADR-010 therefore uses a token-gated Apps Script read bridge instead.
 
@@ -171,7 +171,17 @@ The same founder-approved deployment was retried. On the retry:
 - deployment URL: `https://script.google.com/macros/s/AKfycbz5bDORUEqama0PiN2o9JpLewgE_RjmBGYs3tXz0-4Jvtgn7DxCI2bbqxo1MLlxY-0/exec`
 - post-deploy token/read-only verification: **FAIL**
 
-The verification failure is currently isolated to the deployed HTTP endpoint response. The workflow expected JSON from `doPost()` but received non-JSON content; `jq` failed with `Invalid numeric literal at line 1, column 10`. The exact Google-side response has not yet been safely fingerprinted, so do **not** claim that `doPost()` itself failed. The most likely next diagnostic is to capture only HTTP status, content type, redirect target and known Google access/authorization fingerprints without logging the bridge token or workbook data.
+The verification failure is currently isolated to the deployed HTTP endpoint response. The workflow expected JSON from `doPost()` but received non-JSON content; `jq` failed with `Invalid numeric literal at line 1, column 10`. The initial workflow did not safely fingerprint the Google-side response, so it did not establish that `doPost()` itself failed.
+
+A no-deploy diagnostic workflow was merged in PR #13 at SHA `5ac8fc958b26f804fdadef14afaa5c94b72304f5` and run as GitHub Actions run `34585449467`. It performed no Apps Script push or deployment operation. Safe live result:
+
+- HTTP status: **401**
+- content type: **text/html**
+- redirect target: **none**
+- fingerprint: **GOOGLE_RESOURCE_UNAVAILABLE**
+- deterministic regression suite before the probe: **PASS**
+
+This proves the request is being rejected by Google's web-app access/resource layer before the expected bridge JSON contract is returned. It does **not** prove that `doPost()` is broken. Correcting the Google-side web-app access/deployment configuration requires a material versioned production redeploy and therefore a new founder Yes / No approval.
 
 Because verification failed:
 
@@ -185,9 +195,9 @@ Because verification failed:
 
 Before live founder production can be marked READY:
 
-1. safely diagnose why the created Apps Script web-app URL returns non-JSON before the bridge verification can prove the `doPost()` contract;
-2. if needed, harden the deployment verifier to report only safe HTTP metadata/fingerprints and fail closed without printing secrets/source data;
-3. make the bridge return the expected token-gated JSON contract and pass live read-only verification;
+1. obtain founder Yes / No approval for the material versioned redeploy required to correct the Google-side web-app access/resource rejection;
+2. correct the deployment access configuration without changing the bridge's read-only/token boundary;
+3. make the bridge return the expected token-gated JSON contract and pass live read-only verification using the safe verifier;
 4. run pull-back source parity after successful verification;
 5. record the verified deployment ID/URL in `config/apps-script-read-bridge.json` only after verification passes;
 6. configure a separate `FCT_WEB_ACCESS_TOKEN` GitHub secret if not already present;
@@ -198,4 +208,4 @@ No Google Cloud billing account/service account is required for this route.
 
 ## Approval Continuity
 
-The founder already approved creation of the versioned Apps Script read bridge and the retry required after the missing-secret failure. Pure diagnostics and verification against the same deployed artifact may proceed without another approval. If fixing the blocker requires a material production code/manifest change and a new versioned deployment, ask for a concise Yes / No before that redeployment. Vercel production promotion remains a separate founder approval gate unless the current conversation contains explicit approval for that exact promotion.
+The founder already approved creation of the versioned Apps Script read bridge and the retry required after the missing-secret failure. Pure diagnostics and verification against the same deployed artifact may proceed without another approval. Safe diagnostics are now complete and show a Google-side 401 access/resource rejection. A material versioned production redeploy is required to correct that blocker, so a new concise Yes / No approval is required before proceeding. Vercel production promotion remains a separate founder approval gate unless the current conversation contains explicit approval for that exact promotion.

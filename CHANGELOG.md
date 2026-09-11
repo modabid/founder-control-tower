@@ -9,6 +9,12 @@
 - Added a diagnostic-only workflow for the existing untrusted deployment; it cannot push Apps Script source or create/update a deployment.
 - Added deterministic regression coverage proving tokens, redirect query data, workbook values and private response bodies are never logged.
 
+### Live Diagnosis
+
+- Diagnostic run `34585449467` passed the full deterministic suite, then received HTTP `401`, content type `text/html`, no redirect and fingerprint `GOOGLE_RESOURCE_UNAVAILABLE` from the existing deployed endpoint.
+- The failure occurs at Google's access/resource layer before the expected `doPost()` JSON contract; no response body, token or workbook data was logged.
+- The diagnostic run performed no Apps Script push or versioned deployment.
+
 ### Deployment Boundary
 
 - This change does not trust or register the pending deployment.
