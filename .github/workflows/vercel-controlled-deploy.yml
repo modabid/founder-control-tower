@@ -47,6 +47,20 @@ jobs:
               exit 1
             fi
           done
+          case "$VERCEL_TOKEN" in
+            vcp_*) ;;
+            *)
+              echo "FCT_VERCEL_TOKEN is not a Vercel-issued account token (expected vcp_ prefix)."
+              echo "Do not use FCT_WEB_ACCESS_TOKEN or another randomly generated value here."
+              exit 1
+              ;;
+          esac
+          case "$VERCEL_TOKEN" in
+            *[[:space:]]*)
+              echo "FCT_VERCEL_TOKEN contains whitespace. Copy the exact token value without spaces or line breaks."
+              exit 1
+              ;;
+          esac
           if [ "${#FCT_APPS_SCRIPT_READ_TOKEN}" -lt 32 ]; then
             echo "FCT_APPS_SCRIPT_READ_TOKEN must be at least 32 characters."
             exit 1
