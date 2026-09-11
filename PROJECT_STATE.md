@@ -135,7 +135,9 @@ No-deploy preflight run `34603857231`, attempt 2, completed successfully after t
 - Vercel candidate created: **NO**
 - Vercel production changed: **NO**
 
-Current blocker: the separate founder Yes / No approval for the `deploy/vercel` candidate-verification-production-promotion gate.
+The founder approved the `deploy/vercel` production gate on 2026-09-11. Controlled workflow run `34604758053` passed deterministic tests and all secret/registry presence checks, but repeated attempts stopped at Vercel authentication before project linking. Vercel returned `User not found (404)` for the configured `FCT_VERCEL_TOKEN`.
+
+Current blocker: replace `FCT_VERCEL_TOKEN` with the exact bearer token issued by Vercel to the account that owns `founder-control-tower`. No candidate was created and production was not changed.
 
 ## No-New-Billing Web Read Path — VERIFIED / REGISTERED
 
@@ -217,20 +219,12 @@ Founder-approved deployment run `34603494366` completed successfully on 2026-09-
 
 The verified deployment ID/URL is now registered in `config/apps-script-read-bridge.json`.
 
-Because verification failed:
-
-- pull-back parity step was skipped in that deployment run;
-- `config/apps-script-read-bridge.json` on `main` intentionally remains empty/untrusted;
-- the new deployment ID/URL is **not yet registered as trusted production source**;
-- Vercel production promotion was **not triggered**;
-- no Sheet write, ACTION_QUEUE mutation, paid AI call or external business action occurred.
-
 ## Remaining Production Gates
 
 Before live founder production can be marked READY:
 
-1. obtain the separate founder Yes / No approval for Vercel production promotion;
-2. run `deploy/vercel` and require candidate founder auth, GET-only API, live bridge read, no-store and zero-side-effect checks before promotion;
+1. restore valid Vercel CLI authentication using a Vercel-issued `FCT_VERCEL_TOKEN`;
+2. rerun the already founder-approved `deploy/vercel` gate and require candidate founder auth, GET-only API, live bridge read, no-store and zero-side-effect checks before promotion;
 3. independently verify the promoted production deployment;
 4. mark production READY only after all checks pass.
 
@@ -238,4 +232,6 @@ No Google Cloud billing account/service account is required for this route.
 
 ## Approval Continuity
 
-The founder already approved creation of the versioned Apps Script read bridge and the retry required after the missing-secret failure. The founder approved and completed the material Apps Script access correction through run `34603494366`. The bridge is verified and registered. Vercel production promotion remains a separate founder Yes / No gate. Vercel production promotion remains a separate founder approval gate unless the current conversation contains explicit approval for that exact promotion.
+The founder already approved creation of the versioned Apps Script read bridge and the retry required after the missing-secret failure. The founder approved and completed the material Apps Script access correction through run `34603494366`. The bridge is verified and registered.
+
+The founder explicitly approved the Vercel candidate-verification-production-promotion gate on 2026-09-11. Technical retries remain within that approval, but promotion must stay blocked until the candidate passes every required verification.
