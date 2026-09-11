@@ -123,11 +123,11 @@ Founder approved and a **separate** Vercel project was created:
 
 `FCT_VERCEL_TOKEN` has been configured by the founder as a private GitHub Actions secret.
 
-## No-New-Billing Web Read Path — IMPLEMENTATION IN PROGRESS
+## No-New-Billing Web Read Path — MERGED / DEPLOYMENT VERIFICATION BLOCKED
 
-The founder declined adding a Google Cloud payment method solely for a new service account. ADR-010 therefore selects a token-gated Apps Script read bridge instead.
+The founder declined adding a Google Cloud payment method solely for a new service account. ADR-010 therefore uses a token-gated Apps Script read bridge instead.
 
-Branch: `phase3/apps-script-read-bridge`
+PR #12 merged to `main` on 2026-09-11 with merge SHA `2bf05199a5cd5a32673ff76830d3cdfc9f2bad6c`.
 
 Design:
 
@@ -142,21 +142,60 @@ The bridge:
 - performs zero ACTION_QUEUE mutations;
 - performs zero paid AI calls;
 - performs zero external business actions;
-- uses Script Property `FCT_READ_BRIDGE_TOKEN` and matching server-only GitHub/Vercel secret `FCT_APPS_SCRIPT_READ_TOKEN`;
+- uses Script Property `FCT_READ_BRIDGE_TOKEN` and matching server-only GitHub secret `FCT_APPS_SCRIPT_READ_TOKEN`;
 - does not reuse the clasp credential on the application request path.
 
-A separate founder-gated versioned web-app deployment branch `deploy/apps-script-web` is being added. Its first successful deployment ID/URL will be recorded in `config/apps-script-read-bridge.json`; Vercel production refuses to run until that registry contains a trusted Apps Script URL.
+Direct offline bridge regression is included in the main test suite and validates correct-token / wrong-token behavior, the fixed nine-range allow-list, date serialization, zero writes and zero AI/executor side effects.
+
+### First Founder-Approved Versioned Web-App Deployment Attempt
+
+Founder explicitly approved the versioned Apps Script read-bridge deployment on 2026-09-11.
+
+Deployment gate: `deploy/apps-script-web`  
+Approved source SHA: `2bf05199a5cd5a32673ff76830d3cdfc9f2bad6c`  
+GitHub Actions run: `34572448406`
+
+Attempt 1 stopped safely before any deployment because `FCT_APPS_SCRIPT_READ_TOKEN` was not available to GitHub Actions. The founder regenerated a 64-character high-entropy token and updated both:
+
+- Apps Script Script Property: `FCT_READ_BRIDGE_TOKEN`
+- GitHub Actions secret: `FCT_APPS_SCRIPT_READ_TOKEN`
+
+The same founder-approved deployment was retried. On the retry:
+
+- deterministic regression suite: **PASS**
+- private deployment input validation: **PASS**
+- clasp credential normalization: **PASS**
+- Apps Script source push step: **PASS** (`clasp` reported `Skipping push`, meaning HEAD already matched reviewed source)
+- versioned read-bridge deployment creation: **PASS**
+- created deployment ID: `AKfycbz5bDORUEqama0PiN2o9JpLewgE_RjmBGYs3tXz0-4Jvtgn7DxCI2bbqxo1MLlxY-0`
+- deployment URL: `https://script.google.com/macros/s/AKfycbz5bDORUEqama0PiN2o9JpLewgE_RjmBGYs3tXz0-4Jvtgn7DxCI2bbqxo1MLlxY-0/exec`
+- post-deploy token/read-only verification: **FAIL**
+
+The verification failure is currently isolated to the deployed HTTP endpoint response. The workflow expected JSON from `doPost()` but received non-JSON content; `jq` failed with `Invalid numeric literal at line 1, column 10`. The exact Google-side response has not yet been safely fingerprinted, so do **not** claim that `doPost()` itself failed. The most likely next diagnostic is to capture only HTTP status, content type, redirect target and known Google access/authorization fingerprints without logging the bridge token or workbook data.
+
+Because verification failed:
+
+- pull-back parity step was skipped in that deployment run;
+- `config/apps-script-read-bridge.json` on `main` intentionally remains empty/untrusted;
+- the new deployment ID/URL is **not yet registered as trusted production source**;
+- Vercel production promotion was **not triggered**;
+- no Sheet write, ACTION_QUEUE mutation, paid AI call or external business action occurred.
 
 ## Remaining Production Gates
 
 Before live founder production can be marked READY:
 
-1. no-billing bridge branch must pass CI and merge to `main`;
-2. founder must configure one server-to-server bridge secret in both Apps Script Script Properties and GitHub Actions;
-3. founder web access token must exist as a separate GitHub secret;
-4. founder must approve the versioned Apps Script web-app deployment;
-5. bridge deployment must pass token/read-only/pull-back verification;
-6. bridge deployment ID/URL must be committed to the non-secret registry;
-7. founder-approved `deploy/vercel` promotion must pass candidate verification before production promotion.
+1. safely diagnose why the created Apps Script web-app URL returns non-JSON before the bridge verification can prove the `doPost()` contract;
+2. if needed, harden the deployment verifier to report only safe HTTP metadata/fingerprints and fail closed without printing secrets/source data;
+3. make the bridge return the expected token-gated JSON contract and pass live read-only verification;
+4. run pull-back source parity after successful verification;
+5. record the verified deployment ID/URL in `config/apps-script-read-bridge.json` only after verification passes;
+6. configure a separate `FCT_WEB_ACCESS_TOKEN` GitHub secret if not already present;
+7. run the founder-approved `deploy/vercel` candidate flow and require candidate auth, GET-only, live bridge read, no-store and zero-side-effect checks before production promotion;
+8. mark production READY only after the promoted deployment is independently verified.
 
 No Google Cloud billing account/service account is required for this route.
+
+## Approval Continuity
+
+The founder already approved creation of the versioned Apps Script read bridge and the retry required after the missing-secret failure. Pure diagnostics and verification against the same deployed artifact may proceed without another approval. If fixing the blocker requires a material production code/manifest change and a new versioned deployment, ask for a concise Yes / No before that redeployment. Vercel production promotion remains a separate founder approval gate unless the current conversation contains explicit approval for that exact promotion.
