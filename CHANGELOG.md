@@ -6,13 +6,16 @@
 
 - The founder approved the controlled `deploy/vercel` candidate-verification-production-promotion gate.
 - Workflow run `34604758053` repeatedly passed the deterministic regression suite and secret/bridge registry validation.
-- Every attempt stopped at Vercel authentication with `User not found (404)` before the dedicated project could be linked.
-- Candidate deployment, live verification and production promotion were skipped; Vercel production remained unchanged.
+- Initial attempts stopped at Vercel authentication with `User not found (404)` before the dedicated project could be linked.
+- PR #23 added safe token-format and whitespace checks without logging the credential; run `34635344619` confirmed those checks passed.
+- PR #24 removed forced team-scope resolution for project-token compatibility and verified the linked project name before candidate creation.
+- Run `34635843605` then returned Vercel's conclusive authentication result: the supplied token is not valid.
+- Candidate deployment, live verification and production promotion were skipped in every run; Vercel production remained unchanged.
 
 ### Current Blocker
 
-- `FCT_VERCEL_TOKEN` is non-empty in GitHub Actions but is not accepted by Vercel as an account bearer token.
-- Replace it with the exact token value issued by Vercel to the account that owns `founder-control-tower`; do not use the independently generated founder web access token.
+- `FCT_VERCEL_TOKEN` is non-empty, begins with the expected `vcp_` format and contains no whitespace, but Vercel rejects it as invalid.
+- Create a fresh access token and save the one-time bearer value shown immediately after creation. A token name, ID, visible prefix/suffix or independently generated founder web token will not authenticate the CLI.
 
 ## 2026-09-11 — Safe Apps Script Bridge Diagnostics
 
