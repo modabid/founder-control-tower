@@ -1,0 +1,75 @@
+name: Apps Script Read Bridge Safe Diagnose
+
+on:
+  push:
+    branches:
+      - diagnose/apps-script-web
+
+permissions:
+  contents: read
+
+concurrency:
+  group: founder-control-tower-apps-script-read-bridge-diagnosis
+  cancel-in-progress: false
+
+jobs:
+  diagnose-existing-deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      FCT_SCRIPT_ID: 1gquskvwbH06I3ZgDQ28q9uY0U8VdV3X8BwPgdAG6UbOtAGTZLHV47LBL
+      CLASP_AUTH_JSON: ${{ secrets.FCT_CLASP_AUTH_JSON }}
+      FCT_APPS_SCRIPT_READ_TOKEN: ${{ secrets.FCT_APPS_SCRIPT_READ_TOKEN }}
+      BRIDGE_URL: https://script.google.com/macros/s/AKfycbz5bDORUEqama0PiN2o9JpLewgE_RjmBGYs3tXz0-4Jvtgn7DxCI2bbqxo1MLlxY-0/exec
+      CLASP_VERSION: 3.4.1
+
+    steps:
+      - name: Checkout diagnostic source
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run deterministic regression suite
+        run: npm test
+
+      - name: Validate private diagnostic inputs
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${CLASP_AUTH_JSON:-}" ]; then
+            echo "FCT_CLASP_AUTH_JSON is not configured."
+            exit 1
+          fi
+          if [ -z "${FCT_APPS_SCRIPT_READ_TOKEN:-}" ] || [ "${#FCT_APPS_SCRIPT_READ_TOKEN}" -lt 32 ]; then
+            echo "FCT_APPS_SCRIPT_READ_TOKEN must be configured and at least 32 characters."
+            exit 1
+          fi
+
+      - name: Safely diagnose existing deployed endpoint
+        run: node scripts/verify-apps-script-bridge.cjs
+
+      - name: Pull back and verify source parity
+        working-directory: apps-script/live
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH_FILE="$RUNNER_TEMP/.clasprc.json"
+          node "$GITHUB_WORKSPACE/scripts/normalize-clasp-auth.cjs" "$AUTH_FILE"
+          jq -e . "$AUTH_FILE" >/dev/null
+          cat > .clasp.json <<EOF
+          {
+            "scriptId": "$FCT_SCRIPT_ID",
+            "rootDir": "."
+          }
+          EOF
+          npx -y "@google/clasp@$CLASP_VERSION" -A "$AUTH_FILE" pull
+          rm -f .clasp.json
+          git diff --exit-code -- .
+
+      - name: Diagnostic summary
+        run: |
+          echo "Existing Apps Script read bridge verification PASS."
+          echo "No Apps Script push or deployment operation was performed."

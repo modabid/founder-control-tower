@@ -96,32 +96,9 @@ jobs:
           echo "Versioned read bridge deployment created/updated."
 
       - name: Verify token-gated read-only bridge
-        shell: bash
         env:
           BRIDGE_URL: ${{ steps.deploy.outputs.url }}
-        run: |
-          set -euo pipefail
-          case "$BRIDGE_URL" in
-            https://script.google.com/macros/s/*/exec) ;;
-            *) echo "Unexpected Apps Script bridge URL."; exit 1 ;;
-          esac
-
-          RESPONSE_FILE="$RUNNER_TEMP/bridge.json"
-          curl --retry 4 --retry-delay 2 --retry-all-errors -sS -L \
-            -H 'Content-Type: application/json' \
-            --data "$(jq -nc --arg token "$FCT_APPS_SCRIPT_READ_TOKEN" '{action:"READ_FOUNDER_SOURCE_V1",token:$token}')" \
-            "$BRIDGE_URL" > "$RESPONSE_FILE"
-
-          jq -e '
-            .ok == true and
-            .contractVersion == "1.0" and
-            .provenance.source == "APPS_SCRIPT_READ_BRIDGE" and
-            .provenance.writesMade == 0 and
-            .provenance.externalActionsExecuted == 0 and
-            .provenance.aiCallsMade == 0 and
-            (.ranges["DAILY_PNL!A:R"] | type == "array") and
-            (.ranges["ACTION_QUEUE!A:X"] | type == "array")
-          ' "$RESPONSE_FILE" >/dev/null
+        run: node scripts/verify-apps-script-bridge.cjs
 
       - name: Pull back and verify source parity
         working-directory: apps-script/live
