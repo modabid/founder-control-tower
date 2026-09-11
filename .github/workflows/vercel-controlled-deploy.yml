@@ -18,9 +18,8 @@ jobs:
     timeout-minutes: 20
     env:
       VERCEL_TOKEN: ${{ secrets.FCT_VERCEL_TOKEN }}
-      FCT_GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.FCT_GOOGLE_SERVICE_ACCOUNT_JSON }}
+      FCT_APPS_SCRIPT_READ_TOKEN: ${{ secrets.FCT_APPS_SCRIPT_READ_TOKEN }}
       FCT_WEB_ACCESS_TOKEN: ${{ secrets.FCT_WEB_ACCESS_TOKEN }}
-      FCT_SPREADSHEET_ID: 1H0NnKfTBP-772JLzTV0oU1CCfWYPIIfUa33tpuWDcjU
       VERCEL_SCOPE: mohammed-abids-projects-ac04f63d
       VERCEL_PROJECT: founder-control-tower
       VERCEL_CLI_VERSION: 59.15.1
@@ -37,31 +36,32 @@ jobs:
       - name: Run deterministic regression suite
         run: npm test
 
-      - name: Validate production secrets
+      - name: Validate production secrets and read bridge registry
         shell: bash
         run: |
           set -euo pipefail
-          for name in VERCEL_TOKEN FCT_GOOGLE_SERVICE_ACCOUNT_JSON FCT_WEB_ACCESS_TOKEN; do
+          for name in VERCEL_TOKEN FCT_APPS_SCRIPT_READ_TOKEN FCT_WEB_ACCESS_TOKEN; do
             if [ -z "${!name:-}" ]; then
               echo "Required GitHub Actions secret for $name is not configured."
               echo "Deployment stopped before changing Vercel production."
               exit 1
             fi
           done
+          if [ "${#FCT_APPS_SCRIPT_READ_TOKEN}" -lt 32 ]; then
+            echo "FCT_APPS_SCRIPT_READ_TOKEN must be at least 32 characters."
+            exit 1
+          fi
           if [ "${#FCT_WEB_ACCESS_TOKEN}" -lt 24 ]; then
             echo "FCT_WEB_ACCESS_TOKEN must be at least 24 characters."
             exit 1
           fi
-          printf '%s' "$FCT_GOOGLE_SERVICE_ACCOUNT_JSON" > "$RUNNER_TEMP/fct-google-service-account.json"
-          jq -e '.type == "service_account" and (.client_email | type == "string" and length > 0) and (.private_key | type == "string" and contains("BEGIN PRIVATE KEY"))' "$RUNNER_TEMP/fct-google-service-account.json" >/dev/null
 
-      - name: Prepare single-line runtime credential
-        shell: bash
-        run: |
-          set -euo pipefail
-          GOOGLE_JSON_B64="$(base64 -w 0 < "$RUNNER_TEMP/fct-google-service-account.json")"
-          echo "::add-mask::$GOOGLE_JSON_B64"
-          echo "FCT_GOOGLE_SERVICE_ACCOUNT_JSON_B64=$GOOGLE_JSON_B64" >> "$GITHUB_ENV"
+          BRIDGE_URL="$(jq -r '.deploymentUrl // ""' config/apps-script-read-bridge.json)"
+          case "$BRIDGE_URL" in
+            https://script.google.com/macros/s/*/exec) ;;
+            *) echo "Apps Script read bridge deployment URL is not registered."; exit 1 ;;
+          esac
+          echo "FCT_APPS_SCRIPT_READ_URL=$BRIDGE_URL" >> "$GITHUB_ENV"
 
       - name: Link dedicated Founder Control Tower project
         shell: bash
@@ -74,7 +74,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          OUTPUT="$(npx -y "vercel@$VERCEL_CLI_VERSION" deploy --yes --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN" --env "FCT_GOOGLE_SERVICE_ACCOUNT_JSON_B64=$FCT_GOOGLE_SERVICE_ACCOUNT_JSON_B64" --env "FCT_WEB_ACCESS_TOKEN=$FCT_WEB_ACCESS_TOKEN" --env "FCT_SPREADSHEET_ID=$FCT_SPREADSHEET_ID")"
+          OUTPUT="$(npx -y "vercel@$VERCEL_CLI_VERSION" deploy --yes --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN" --env "FCT_APPS_SCRIPT_READ_URL=$FCT_APPS_SCRIPT_READ_URL" --env "FCT_APPS_SCRIPT_READ_TOKEN=$FCT_APPS_SCRIPT_READ_TOKEN" --env "FCT_WEB_ACCESS_TOKEN=$FCT_WEB_ACCESS_TOKEN")"
           CANDIDATE_URL="$(printf '%s\n' "$OUTPUT" | grep -Eo 'https://founder-control-tower-[A-Za-z0-9-]+\.vercel\.app' | tail -n 1)"
           if [ -z "$CANDIDATE_URL" ]; then
             echo "No trusted Founder Control Tower candidate URL was returned."
@@ -128,4 +128,4 @@ jobs:
         run: |
           echo "Founder Control Tower verified candidate promoted to production."
           echo "Verified deployment: $CANDIDATE_URL"
-          echo "Pre-promotion checks: founder auth, GET-only API, live read, no-store, zero writes, zero external actions, zero request-path AI calls."
+          echo "Pre-promotion checks: founder auth, GET-only API, Apps Script live read, no-store, zero writes, zero external actions, zero request-path AI calls."
