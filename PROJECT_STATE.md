@@ -4,9 +4,9 @@ Last updated: **2026-09-11**
 
 ## Overall
 
-Founder Control Tower Phase 1 is **locked, validated and deployed**. GitHub is the durable code/documentation source of truth. Google Apps Script remains the transitional live runtime while Phase 3 extracts deterministic business logic and data contracts into portable TypeScript.
+Founder Control Tower Phase 1 is **locked, validated and deployed**. GitHub is the durable code/documentation source of truth. Google Apps Script remains a transitional runtime while deterministic business logic and the founder web surface migrate to portable TypeScript/Vercel.
 
-The project operates in a **hands-off technical model**: normal architecture, coding, tests, CI fixes, branches, PRs and internal merges proceed without founder interruption. A concise **Yes / No** is required only for production deployment, paid infrastructure or governed externally effective business actions.
+The project operates in a **hands-off technical model**: normal architecture, coding, tests, CI fixes, branches, PRs and internal merges proceed without founder interruption. A concise **Yes / No** remains required for production deployments, paid infrastructure and governed externally effective business actions.
 
 ## Repository / Runtime Status
 
@@ -14,12 +14,11 @@ The project operates in a **hands-off technical model**: normal architecture, co
 - default branch: `main`
 - live Apps Script source mirror: `apps-script/live/`
 - Phase-1 mapped live-vs-locked code parity: **12/12**
-- controlled GitHub -> Apps Script deployment path: **operational**
-- latest verified controlled Apps Script source deployment: regression PASS, clasp auth PASS, push PASS, pull-back parity PASS on 2026-09-10
-- deployment target is Apps Script source/HEAD only; no separate versioned web-app deployment is implied
-- `.clasp.json`: local-only / intentionally excluded from Git
+- controlled GitHub -> Apps Script source deployment path: **operational**
+- latest verified Apps Script source deployment: regression PASS, clasp auth PASS, push PASS, pull-back parity PASS on 2026-09-10
+- `.clasp.json`: local-only / excluded from Git
 - `appsscript.json`: tracked
-- `FCT_CLASP_AUTH_JSON`: deployment-only secret; never an application/web data credential
+- `FCT_CLASP_AUTH_JSON`: deployment-only secret; never an application data credential
 
 ## Phase-1 Locked Agents
 
@@ -33,21 +32,7 @@ The project operates in a **hands-off technical model**: normal architecture, co
 | AG006 | STOCK | Inventory | Locked |
 | AG012 | SENTINEL | Data Quality / Audit | Locked |
 
-Reporting chain:
-
-`Domain Agent -> SENTINEL -> ORBIT -> ATLAS -> Founder`
-
-## Final Phase-1 Validation
-
-Final hierarchy validation succeeded on 2026-09-10.
-
-- validation mode: `HIERARCHY_ONLY_WITH_DETERMINISTIC_SPECIALIST_PROXIES`
-- specialist AI calls: `0`
-- hierarchy AI calls: `3`
-- executed: `AG012 -> AG002 -> AG001`
-- Sentinel recovery: not required
-- V5 zero-AI cached replay: PASS
-- governed external recommendations are deterministically repaired so model phrasing cannot bypass founder approval
+Reporting chain: `Domain Agent -> SENTINEL -> ORBIT -> ATLAS -> Founder`
 
 ## Locked Business Controls
 
@@ -56,136 +41,122 @@ Final hierarchy validation succeeded on 2026-09-10.
 - Delivered does not imply Paid. Delivered-but-unpaid remains courier receivable.
 - Stock risk is dynamically derived from current deterministic data; SKU severity is never hardcoded.
 - Inventory velocity = `max(7-day average pickup, 14-day average pickup)`.
-- Zero physical stock with zero recent velocity is `NO_RECENT_DEMAND` / unknown-velocity monitoring, not an active-demand stockout alert.
+- Zero physical stock with zero recent velocity = `NO_RECENT_DEMAND`, not active-demand stockout.
 - RRTO is not physical available inventory until received/check-in.
-- Last Mile scale gate is `>=70%` finalized delivery success.
-- Deterministic normalized data and reconciliations outrank AI interpretation.
-- Missing/bad data causes HOLD/ASK, not guessing or majority voting.
+- Last Mile scale gate = finalized delivery success `>=70%`.
+- Deterministic normalized data/reconciliation outrank AI interpretation.
+- Missing/bad material data causes HOLD/ASK, not guessing.
 
 ## Current Workbook
 
 `Founder Control Tower - MVP`
 
-Spreadsheet ID:
+Spreadsheet ID: `1H0NnKfTBP-772JLzTV0oU1CCfWYPIIfUa33tpuWDcjU`
 
-`1H0NnKfTBP-772JLzTV0oU1CCfWYPIIfUa33tpuWDcjU`
+The workbook remains the live MVP source during strangler migration. Existing `ACTION_QUEUE` keeps the 24-column A:X contract.
 
-The workbook remains the live MVP source during the strangler migration. Existing `ACTION_QUEUE` keeps the current 24-column A:X contract; no new control tab is required for Phase-2 approval state.
+## Phase 2 — Control Plane
 
-## Phase 2 — Control Plane / Founder Operating Surface
-
-### Implemented
+Implemented:
 
 - deterministic ACTION_QUEUE mapping from final ATLAS recommendations;
 - duplicate-open-action suppression;
-- founder Approve / Reject / Modify-and-Approve state transitions;
-- approval state separated from execution state; approval never implies execution;
+- founder Approve / Reject / Modify-and-Approve transitions;
+- approval state separated from execution state;
 - validated zero-AI ATLAS cache bridge;
 - deterministic founder dashboard snapshot contract;
-- auditable agent playbook registry with runtime parity tests;
-- daily operating-cycle code that can refresh founder report/history and queue recommendations while executing zero external business actions;
-- controlled GitHub Actions Apps Script source deployment workflow;
-- dedicated `deploy/apps-script` branch as production deployment gate.
+- auditable agent playbook registry;
+- daily operating-cycle code with zero external business actions;
+- controlled Apps Script source deployment workflow.
 
-### Current Production Scheduling
+The Apps Script daily trigger is not claimed as installed because the remote Execution API path returned Google storage `NOT_FOUND`. The approved daily founder brief is active through ChatGPT automation at **08:15 Asia/Dubai**, analysis/reporting only.
 
-The Apps Script daily-trigger installer exists in code, but the remote Apps Script Execution API `run-function` route returned Google storage `NOT_FOUND` during the attempted preflight/install/verify flow. Therefore **no Apps Script daily trigger is claimed as installed** from that route.
-
-The founder-approved daily brief is active through ChatGPT automation at **08:15 Asia/Dubai**. It is analysis/reporting only and may not execute ads, payments, courier/order changes, inventory commitments, messages, purchases, deployments or other governed external actions.
-
-## Phase 3 — Portable Domain / Data / Web Layer
+## Phase 3 — Portable Domain / Data / Web
 
 ### Portable Domain Core V1 — MERGED
 
-Merged to `main` on 2026-09-10 (merge SHA `9b046ef599b6aade4eb39401896e196294f1317d`).
+Merged SHA: `9b046ef599b6aade4eb39401896e196294f1317d`.
 
-`packages/domain/src/core.ts` carries portable deterministic implementations for terminal delivery success, Delivered/Paid semantics, active-channel contribution completeness and the TikTok hard block, Operating Profit after complete Real Contribution, inventory velocity/stock days/dynamic stock gates, Last Mile `>=70%` scale gate and fail-closed numeric validation.
+Portable deterministic rules cover terminal delivery success, Delivered/Paid cash semantics, active-channel completeness/TikTok hard block, Operating Profit gating, inventory velocity/stock days, dynamic stock risk and Last Mile scale gate.
 
 ### Read-Only Sheet / Founder API V1 — MERGED
 
-Merged to `main` on 2026-09-10 (merge SHA `707ff8e4c967bdbb3e9f22ae178147a5696bb75a`).
+Merged SHA: `707ff8e4c967bdbb3e9f22ae178147a5696bb75a`.
 
-Implemented and regression-tested:
-
-- strict Sheet matrix/header adapter;
-- GET-only Google Sheets REST reader with injected server-only token provider;
-- deterministic founder read model for MTD economics, cash/receivable semantics, Meta reconciliation, fixed-cost baseline, pending approvals and stock risk;
-- explicit data-quality flags;
-- authenticated framework-neutral founder API that is GET-only, no-store, fail-closed and provider-error-redacted;
-- zero workbook writes, zero AI calls and zero external actions;
-- zero-paid-API fixture regression tests.
+Includes strict range/header adapters, deterministic founder read model, GET-only founder API, no-store behavior, fail-closed provider handling, and zero-write/zero-AI/zero-executor regression tests.
 
 ### Founder Web Dashboard Shell V1 — MERGED
 
-Merged to `main` on 2026-09-10 (merge SHA `afdb3bc6d9c5750a4592ea23766f274bbd12bd0f`).
+Merged SHA: `afdb3bc6d9c5750a4592ea23766f274bbd12bd0f`.
 
-Implemented and CI-tested:
+Responsive founder dashboard surfaces P&L, delivery, courier receivable, deterministic controls, pending approvals and dynamic stock risk without duplicating business formulas in UI.
 
-- responsive read-only founder dashboard shell;
-- P&L, delivery, courier receivable, controls, pending approvals and stock-risk surfaces;
-- explicit offline/mock mode banner;
-- fail-closed rendering fallback;
-- no duplicated deterministic formulas in UI;
-- no live Google credential, workbook write, approval mutation, AI call or external executor.
+### Live Web Integration — MERGED
 
-### Live Web Integration — CI GREEN / READY TO MERGE
+Merged SHA: `8a269b76775386255a556017def47e914c671d12`.
 
-Branch: `phase3/live-web-integration`
+Live integration fixed/locked:
 
-Validated on 2026-09-11:
+- UAE + Kuwait cash-source parity with shipment dedupe;
+- zero-demand stock semantics;
+- payroll payment-evidence control count;
+- Sep-9 live-workbook parity regression;
+- founder bearer auth, fail-closed/no-store API and server-only data credential boundary.
 
-- server-side `/api/founder` integration uses the existing GET-only Founder Read API;
-- browser never receives Google credentials;
-- dedicated service-account token provider is server-only;
-- founder bearer token is required for the API;
-- API responses are `no-store` with provider/configuration errors redacted;
-- production web build regression passes;
-- live workbook parity exposed and repaired zero-demand stock semantics so dormant zero-stock SKUs do not become false critical alerts;
-- group cash/receivable parity now merges UAE `ORDERS_MASTER` and Kuwait `RAW_KWT` while deduplicating by shipment ID;
-- strict generic Sheet parser remains strict; RAW_KWT repeated headers are handled by a dedicated positional adapter rather than weakening contract validation;
-- payroll payment-evidence pending control count is now exposed correctly;
-- Sep-9 deterministic live-workbook regression is part of the main CI suite and is green at commit `03014c206795f2bfe48087ed954b703f6e6d4ed7`;
-- no Sheet writes, paid AI calls or external business executors are introduced.
+Sep-9 parity lock: 757 picked orders, 395 terminal successes, 251 pending, 111 RRTO, 78.06% finalized delivery, AED 28,731.12 delivered revenue/courier receivable at that cutoff, TikTok final-P&L hard blocker, two pending founder approvals and dynamic stock classification.
 
-Sep-9 parity lock includes: 757 picked orders, 395 terminal successes, 251 pending, 111 RRTO, 78.06% finalized delivery, AED 28,731.12 delivered revenue / courier receivable at that cutoff, TikTok final-P&L hard blocker, two pending founder approvals, and dynamic current-demand stock classification.
+### Controlled Vercel Production Gate — MERGED
 
-## Vercel Production Target
+Initial gate merged SHA `7fd64b10b28b3ac2bd10d99d2bd25dc5475b98a4`; verify-before-promote hardening merged SHA `7886920c964b5c0e1d04ef595b6eaf1f0ae1b6e4`.
 
-Founder approved creating a **new dedicated Vercel project** for Founder Control Tower rather than deploying into COD Dropshipping, StoreGem, DropshippingHunt or any other existing project.
+Production is triggered only from `deploy/vercel`. A candidate must pass auth, GET-only, live-read, no-store and zero-side-effect checks before promotion.
 
-Target:
+## Dedicated Vercel Project
 
-- Vercel project name: `founder-control-tower`
+Founder approved and a **separate** Vercel project was created:
+
+- project: `founder-control-tower`
 - source repository: `modabid/founder-control-tower`
-- production purpose: Founder Control Tower dashboard + read-only founder API
-- environment and billing isolation: separate from existing ecommerce/SaaS projects
-- current status: **not yet deployed**
+- scope: Mohammed Abid's Vercel projects
+- isolated from COD Dropshipping, StoreGem, DropshippingHunt and other applications
+- current deployment: safe preview/bootstrap only; **live founder production is not yet marked READY**
 
-Required server-only production environment values:
+`FCT_VERCEL_TOKEN` has been configured by the founder as a private GitHub Actions secret.
 
-- `FCT_GOOGLE_SERVICE_ACCOUNT_EMAIL`
-- `FCT_GOOGLE_SERVICE_ACCOUNT_PRIVATE_KEY`
-- `FCT_WEB_ACCESS_TOKEN`
-- optional override `FCT_SPREADSHEET_ID` (otherwise the locked workbook ID is used)
+## No-New-Billing Web Read Path — IMPLEMENTATION IN PROGRESS
 
-The clasp deployment credential must never be reused by the web application.
+The founder declined adding a Google Cloud payment method solely for a new service account. ADR-010 therefore selects a token-gated Apps Script read bridge instead.
 
-## Credential Boundary for Web Runtime
+Branch: `phase3/apps-script-read-bridge`
 
-A production web/API deployment must use a **dedicated server-only Google read credential/token provider** with minimum practical read scope. The clasp deployment credential must not be reused. No browser/client receives Google access or refresh tokens.
+Design:
 
-## Founder Approval Model
+`Vercel /api/founder -> Apps Script token-gated read bridge -> Founder Control Tower workbook`
 
-Technical development, deterministic/offline tests, CI fixes, docs, PRs, internal merges, cached replay and read-only inspection proceed without founder interruption.
+The bridge:
 
-Founder Yes/No is required before production deploy/redeploy, paid infrastructure or externally effective actions. Founder approval to proceed with the live web deployment stage and to create a separate `founder-control-tower` Vercel project has been received.
+- reads only a fixed allow-list of nine existing workbook ranges;
+- returns raw matrices only;
+- keeps all finance/delivery/cash/stock calculations in portable TypeScript;
+- performs zero Sheet writes;
+- performs zero ACTION_QUEUE mutations;
+- performs zero paid AI calls;
+- performs zero external business actions;
+- uses Script Property `FCT_READ_BRIDGE_TOKEN` and matching server-only GitHub/Vercel secret `FCT_APPS_SCRIPT_READ_TOKEN`;
+- does not reuse the clasp credential on the application request path.
 
-## Next Workstream
+A separate founder-gated versioned web-app deployment branch `deploy/apps-script-web` is being added. Its first successful deployment ID/URL will be recorded in `config/apps-script-read-bridge.json`; Vercel production refuses to run until that registry contains a trusted Apps Script URL.
 
-1. merge the CI-green live web integration PR into `main`;
-2. create/link the new dedicated Vercel project `founder-control-tower` to `modabid/founder-control-tower`;
-3. provision/use a dedicated server-only Google read credential and founder web access token without exposing either to the browser;
-4. deploy the read-only Founder Control Tower web surface under the approved production gate;
-5. verify authentication, live workbook parity, fail-closed behavior, no-cache policy and zero-write/executor boundaries after deployment;
-6. migrate additional deterministic calculations/jobs incrementally before considering Apps Script retirement;
-7. add permissioned executors domain-by-domain only after separate founder approval and audit coverage.
+## Remaining Production Gates
+
+Before live founder production can be marked READY:
+
+1. no-billing bridge branch must pass CI and merge to `main`;
+2. founder must configure one server-to-server bridge secret in both Apps Script Script Properties and GitHub Actions;
+3. founder web access token must exist as a separate GitHub secret;
+4. founder must approve the versioned Apps Script web-app deployment;
+5. bridge deployment must pass token/read-only/pull-back verification;
+6. bridge deployment ID/URL must be committed to the non-secret registry;
+7. founder-approved `deploy/vercel` promotion must pass candidate verification before production promotion.
+
+No Google Cloud billing account/service account is required for this route.

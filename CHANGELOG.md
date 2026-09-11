@@ -1,5 +1,32 @@
 # Changelog
 
+## 2026-09-11 — Phase 3 No-Billing Apps Script Read Bridge
+
+### Added
+
+- Token-gated Apps Script web-app read bridge under `apps-script/live/FounderReadBridge.js`.
+- Fixed allow-list for the nine workbook ranges required by the founder read model.
+- Server-side `AppsScriptBridgeReader` that fetches the source bundle once per founder request and satisfies all range reads from that bundle.
+- Separate production gate `deploy/apps-script-web` for versioned read-bridge deployment and verification.
+- Non-secret bridge deployment registry at `config/apps-script-read-bridge.json`.
+- Updated Vercel candidate/promotion workflow to use the Apps Script bridge instead of a Google service account.
+- ADR-010 and `docs/APPS_SCRIPT_READ_BRIDGE.md`.
+
+### Security / Cost Boundary
+
+- No new Google Cloud billing account or service account is required for the initial founder web runtime.
+- Bridge authorization uses dedicated Script Property `FCT_READ_BRIDGE_TOKEN` plus matching server-side secret `FCT_APPS_SCRIPT_READ_TOKEN`.
+- The clasp deployment credential is not reused on the application request path.
+- The browser receives neither bridge token nor Google credential.
+- Bridge contains no Sheet writes, ACTION_QUEUE mutations, AI calls or external business executors.
+- Deterministic business calculations remain in portable TypeScript rather than moving back into Apps Script.
+
+### Deployment Boundary
+
+- Code/CI work does not itself create or update the versioned Apps Script web app.
+- Versioned bridge deployment remains founder-gated.
+- Vercel production promotion remains founder-gated and can proceed only after a registered bridge candidate passes live read-only verification.
+
 ## 2026-09-10 — Phase 3 Founder Web Dashboard Shell V1
 
 ### Added

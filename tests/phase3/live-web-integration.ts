@@ -1,44 +1,43 @@
 import assert from 'node:assert/strict';
-import { generateKeyPairSync } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { createFounderBearerAuthorizer } from '../../packages/api/src/bearer-auth.ts';
 import {
-  GOOGLE_OAUTH_TOKEN_URL,
-  GOOGLE_SHEETS_READ_SCOPE,
-  createGoogleServiceAccountTokenProvider
-} from '../../packages/data/src/google-service-account-token.ts';
+  APPS_SCRIPT_BRIDGE_ACTION,
+  AppsScriptBridgeReader
+} from '../../packages/data/src/apps-script-read-bridge.ts';
 
-const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048 });
-const pem = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString();
-let exchangeCalls = 0;
-let assertion = '';
+const bridgeToken = 'bridge-token-0123456789abcdef0123456789';
+const bridgeUrl = 'https://script.google.com/macros/s/AKfycbOfflineBridgeDeployment123456789/exec';
+let bridgeCalls = 0;
+let capturedBody: Record<string, unknown> | null = null;
 
-const tokenProvider = createGoogleServiceAccountTokenProvider({
-  clientEmail: 'fct-reader@example.iam.gserviceaccount.com',
-  privateKey: pem,
-  now: () => new Date('2026-09-10T20:30:00.000Z'),
+const bridgeReader = new AppsScriptBridgeReader({
+  endpointUrl: bridgeUrl,
+  token: bridgeToken,
   fetchImpl: async (input, init) => {
-    exchangeCalls++;
-    assert.equal(input, GOOGLE_OAUTH_TOKEN_URL);
+    bridgeCalls++;
+    assert.equal(input, bridgeUrl);
     assert.equal(init?.method, 'POST');
-    const params = new URLSearchParams(String(init?.body || ''));
-    assert.equal(params.get('grant_type'), 'urn:ietf:params:oauth:grant-type:jwt-bearer');
-    assertion = String(params.get('assertion') || '');
-    return Response.json({ access_token: 'offline-access-token', expires_in: 3600 });
+    assert.equal(init?.cache, 'no-store');
+    assert.equal(init?.redirect, 'follow');
+    capturedBody = JSON.parse(String(init?.body || '{}'));
+    return Response.json({
+      ok: true,
+      contractVersion: '1.0',
+      ranges: {
+        'DAILY_PNL!A:R': [['Date', 'Orders_Picked'], ['2026-09-09', 10]],
+        'ACTION_QUEUE!A:X': [['Action_ID'], ['ACT-1']]
+      }
+    });
   }
 });
 
-assert.equal(await tokenProvider(), 'offline-access-token');
-assert.equal(await tokenProvider(), 'offline-access-token');
-assert.equal(exchangeCalls, 1, 'Access token should be cached before expiry.');
-
-const jwtParts = assertion.split('.');
-assert.equal(jwtParts.length, 3);
-const payload = JSON.parse(Buffer.from(jwtParts[1], 'base64url').toString('utf8'));
-assert.equal(payload.scope, GOOGLE_SHEETS_READ_SCOPE);
-assert.equal(payload.aud, GOOGLE_OAUTH_TOKEN_URL);
-assert.equal(payload.iss, 'fct-reader@example.iam.gserviceaccount.com');
-assert.equal(payload.exp - payload.iat, 3600);
+assert.deepEqual(await bridgeReader.readRange('DAILY_PNL!A:R'), [['Date', 'Orders_Picked'], ['2026-09-09', 10]]);
+assert.deepEqual(await bridgeReader.readRange('ACTION_QUEUE!A:X'), [['Action_ID'], ['ACT-1']]);
+assert.equal(bridgeCalls, 1, 'One bridge request must serve all allow-listed range reads for a founder request.');
+assert.deepEqual(capturedBody, { action: APPS_SCRIPT_BRIDGE_ACTION, token: bridgeToken });
+assert.throws(() => new AppsScriptBridgeReader({ endpointUrl: 'https://example.com/not-trusted', token: bridgeToken }));
+assert.throws(() => new AppsScriptBridgeReader({ endpointUrl: bridgeUrl, token: 'too-short' }));
 
 const founderToken = 'founder-access-token-0123456789abcdef';
 const authorize = createFounderBearerAuthorizer(founderToken);
@@ -49,6 +48,7 @@ assert.throws(() => createFounderBearerAuthorizer('too-short'));
 
 const index = await readFile(new URL('../../apps/web/index.html', import.meta.url), 'utf8');
 const liveBootstrap = await readFile(new URL('../../apps/web/live-dashboard.js', import.meta.url), 'utf8');
+const apiRoute = await readFile(new URL('../../api/founder.ts', import.meta.url), 'utf8');
 const buildScript = await readFile(new URL('../../scripts/build-web.mjs', import.meta.url), 'utf8');
 const vercelConfig = JSON.parse(await readFile(new URL('../../vercel.json', import.meta.url), 'utf8'));
 
@@ -57,8 +57,14 @@ assert.doesNotMatch(index, /mock-founder-data\.js/);
 assert.match(liveBootstrap, /method:\s*'GET'/);
 assert.match(liveBootstrap, /cache:\s*'no-store'/);
 assert.match(liveBootstrap, /Authorization:\s*'Bearer '/);
+assert.doesNotMatch(liveBootstrap, /FCT_APPS_SCRIPT_READ_TOKEN/);
 assert.doesNotMatch(liveBootstrap, /FCT_GOOGLE_SERVICE_ACCOUNT/);
 assert.doesNotMatch(liveBootstrap, /PRIVATE KEY/);
+assert.match(apiRoute, /AppsScriptBridgeReader/);
+assert.match(apiRoute, /FCT_APPS_SCRIPT_READ_URL/);
+assert.match(apiRoute, /FCT_APPS_SCRIPT_READ_TOKEN/);
+assert.doesNotMatch(apiRoute, /GoogleServiceAccount/);
+assert.doesNotMatch(apiRoute, /FCT_CLASP_AUTH_JSON/);
 assert.match(buildScript, /index\.html/);
 assert.doesNotMatch(buildScript, /mock-founder-data\.js/);
 assert.equal(vercelConfig.outputDirectory, 'dist');

@@ -71,3 +71,16 @@ Founder approval remains mandatory for production deployment, paid infrastructur
 For Apps Script source deployment, branch `deploy/apps-script` is the explicit production gate. Moving that branch to an approved `main` commit triggers deterministic CI, controlled `clasp push`, immediate pull-back verification and drift failure handling. This deployment path updates Apps Script source/HEAD only and does not silently create or update a separate versioned web-app deployment.
 
 A one-time private GitHub Actions secret (`FCT_CLASP_AUTH_JSON`) is required because credentials must never be committed to the repository.
+
+## ADR-010 — No-new-billing web read path uses a token-gated Apps Script bridge
+
+**Date:** 2026-09-11  
+**Status:** Accepted
+
+The founder declined adding a Google Cloud payment method solely to provision a service account for the initial web dashboard. The production read path therefore uses the existing Apps Script runtime as a temporary, token-gated read bridge.
+
+The bridge may expose only a fixed allow-list of Google Sheet ranges and returns source matrices only. It must not contain financial/business calculations, Sheet writes, ACTION_QUEUE mutations, AI calls or external business executors. Portable TypeScript remains authoritative for deterministic founder calculations.
+
+The bridge uses a dedicated Script Property `FCT_READ_BRIDGE_TOKEN`; Vercel receives the matching server-only `FCT_APPS_SCRIPT_READ_TOKEN`. This credential is separate from both the founder web access token and the clasp deployment credential.
+
+A versioned Apps Script web-app deployment is governed separately from the normal Apps Script source/HEAD gate. It may be deployed only from `deploy/apps-script-web` after explicit founder approval, deterministic tests and post-deploy read-only verification. The Vercel production gate remains `deploy/vercel` and may promote only a candidate that successfully reads through the registered bridge.
