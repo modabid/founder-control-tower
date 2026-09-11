@@ -38,7 +38,7 @@ function credentialFromStore(store) {
 
 async function accessTokenFor(credential, fetchImpl = globalThis.fetch) {
   const expiry = Number(credential.expiry_date || credential.exprity_date || 0);
-  if (credential.access_token && (!expiry || expiry > Date.now() + 60000)) return credential.access_token;
+  if (credential.access_token && expiry > Date.now() + 60000) return credential.access_token;
   if (!credential.refresh_token || !credential.client_id || !credential.client_secret) {
     throw new DeploymentInspectionError('CLASP_REFRESH_UNAVAILABLE');
   }
