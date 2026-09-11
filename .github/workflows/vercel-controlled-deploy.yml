@@ -20,7 +20,6 @@ jobs:
       VERCEL_TOKEN: ${{ secrets.FCT_VERCEL_TOKEN }}
       FCT_APPS_SCRIPT_READ_TOKEN: ${{ secrets.FCT_APPS_SCRIPT_READ_TOKEN }}
       FCT_WEB_ACCESS_TOKEN: ${{ secrets.FCT_WEB_ACCESS_TOKEN }}
-      VERCEL_SCOPE: mohammed-abids-projects-ac04f63d
       VERCEL_PROJECT: founder-control-tower
       VERCEL_CLI_VERSION: 59.15.1
 
@@ -81,14 +80,19 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx -y "vercel@$VERCEL_CLI_VERSION" link --yes --project "$VERCEL_PROJECT" --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN"
+          npx -y "vercel@$VERCEL_CLI_VERSION" link --yes --project "$VERCEL_PROJECT" --token "$VERCEL_TOKEN"
+          LINKED_PROJECT="$(jq -r '.projectName // ""' .vercel/project.json)"
+          if [ "$LINKED_PROJECT" != "$VERCEL_PROJECT" ]; then
+            echo "Vercel linked an unexpected project. Deployment stopped."
+            exit 1
+          fi
 
       - name: Create isolated candidate deployment
         id: candidate
         shell: bash
         run: |
           set -euo pipefail
-          OUTPUT="$(npx -y "vercel@$VERCEL_CLI_VERSION" deploy --yes --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN" --env "FCT_APPS_SCRIPT_READ_URL=$FCT_APPS_SCRIPT_READ_URL" --env "FCT_APPS_SCRIPT_READ_TOKEN=$FCT_APPS_SCRIPT_READ_TOKEN" --env "FCT_WEB_ACCESS_TOKEN=$FCT_WEB_ACCESS_TOKEN")"
+          OUTPUT="$(npx -y "vercel@$VERCEL_CLI_VERSION" deploy --yes --token "$VERCEL_TOKEN" --env "FCT_APPS_SCRIPT_READ_URL=$FCT_APPS_SCRIPT_READ_URL" --env "FCT_APPS_SCRIPT_READ_TOKEN=$FCT_APPS_SCRIPT_READ_TOKEN" --env "FCT_WEB_ACCESS_TOKEN=$FCT_WEB_ACCESS_TOKEN")"
           CANDIDATE_URL="$(printf '%s\n' "$OUTPUT" | grep -Eo 'https://founder-control-tower-[A-Za-z0-9-]+\.vercel\.app' | tail -n 1)"
           if [ -z "$CANDIDATE_URL" ]; then
             echo "No trusted Founder Control Tower candidate URL was returned."
@@ -132,8 +136,8 @@ jobs:
           CANDIDATE_URL: ${{ steps.candidate.outputs.url }}
         run: |
           set -euo pipefail
-          npx -y "vercel@$VERCEL_CLI_VERSION" promote "$CANDIDATE_URL" --yes --timeout 5m --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN"
-          npx -y "vercel@$VERCEL_CLI_VERSION" promote status --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN"
+          npx -y "vercel@$VERCEL_CLI_VERSION" promote "$CANDIDATE_URL" --yes --timeout 5m --token "$VERCEL_TOKEN"
+          npx -y "vercel@$VERCEL_CLI_VERSION" promote status --token "$VERCEL_TOKEN"
 
       - name: Deployment summary
         shell: bash
