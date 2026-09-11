@@ -123,7 +123,7 @@ Founder approved and a **separate** Vercel project was created:
 
 `FCT_VERCEL_TOKEN` has been configured by the founder as a private GitHub Actions secret.
 
-## No-New-Billing Web Read Path — MERGED / GOOGLE ACCESS BLOCKED
+## No-New-Billing Web Read Path — VERIFIED / REGISTERED
 
 The founder declined adding a Google Cloud payment method solely for a new service account. ADR-010 therefore uses a token-gated Apps Script read bridge instead.
 
@@ -183,7 +183,25 @@ A no-deploy diagnostic workflow was merged in PR #13 at SHA `5ac8fc958b26f804fda
 
 After the founder confirmed that `FCT_READ_BRIDGE_TOKEN` had now been saved in Apps Script Script Properties, the same no-deploy diagnostic was rerun as attempt 2 of run `34585449467`. It returned the identical `401` / `text/html` / no-redirect / `GOOGLE_RESOURCE_UNAVAILABLE` result. Script Properties are read only after Apps Script execution begins, so this confirms the saved token is not the remaining blocker; Google's web-app access/resource layer is rejecting the request first.
 
-This proves the request is being rejected by Google's web-app access/resource layer before the expected bridge JSON contract is returned. It does **not** prove that `doPost()` is broken. Correcting the Google-side web-app access/deployment configuration requires a material versioned production redeploy and therefore a new founder Yes / No approval.
+Safe deployment metadata then identified the exact blocker: version 3 was a `WEB_APP` executing as `USER_DEPLOYING`, but its access was `ANYONE` rather than `ANYONE_ANONYMOUS`. That setting requires Google sign-in and caused the pre-`doPost()` 401.
+
+The founder approved a material access correction and new versioned deployment. PR #18 hardened the production gate to force the reviewed manifest, pull it back and require anonymous access before version creation, then verify deployed access metadata before live JSON.
+
+Founder-approved deployment run `34603494366` completed successfully on 2026-09-11:
+
+- deterministic regression suite: **PASS**
+- reviewed Apps Script source force-push: **PASS**
+- pre-deployment pull-back manifest access: **ANYONE_ANONYMOUS**
+- created deployment version: **4**
+- verified deployment ID: `AKfycbyVSTktHx55hSfV99I2A-ZSuJqIzj56sWrv4yE1x3SFj6bxgsZojCKBjae6sTO6II6aXA`
+- deployed entry point: **WEB_APP / ANYONE_ANONYMOUS / USER_DEPLOYING**
+- live HTTP chain: **302** to `script.googleusercontent.com`, then **200 application/json**
+- token-gated JSON contract: **PASS**
+- allow-listed source matrices: **PASS**
+- writes / external actions / AI calls: **0 / 0 / 0**
+- final source pull-back parity: **PASS**
+
+The verified deployment ID/URL is now registered in `config/apps-script-read-bridge.json`.
 
 Because verification failed:
 
@@ -197,17 +215,14 @@ Because verification failed:
 
 Before live founder production can be marked READY:
 
-1. obtain founder Yes / No approval for the material versioned redeploy required to correct the Google-side web-app access/resource rejection;
-2. correct the deployment access configuration without changing the bridge's read-only/token boundary;
-3. make the bridge return the expected token-gated JSON contract and pass live read-only verification using the safe verifier;
-4. run pull-back source parity after successful verification;
-5. record the verified deployment ID/URL in `config/apps-script-read-bridge.json` only after verification passes;
-6. configure a separate `FCT_WEB_ACCESS_TOKEN` GitHub secret if not already present;
-7. run the founder-approved `deploy/vercel` candidate flow and require candidate auth, GET-only, live bridge read, no-store and zero-side-effect checks before production promotion;
-8. mark production READY only after the promoted deployment is independently verified.
+1. verify `FCT_WEB_ACCESS_TOKEN` and all production secrets through the no-deploy Vercel readiness preflight;
+2. obtain the separate founder Yes / No approval for Vercel production promotion;
+3. run `deploy/vercel` and require candidate founder auth, GET-only API, live bridge read, no-store and zero-side-effect checks before promotion;
+4. independently verify the promoted production deployment;
+5. mark production READY only after all checks pass.
 
 No Google Cloud billing account/service account is required for this route.
 
 ## Approval Continuity
 
-The founder already approved creation of the versioned Apps Script read bridge and the retry required after the missing-secret failure. Pure diagnostics and verification against the same deployed artifact may proceed without another approval. Safe diagnostics are now complete and show a Google-side 401 access/resource rejection. A material versioned production redeploy is required to correct that blocker, so a new concise Yes / No approval is required before proceeding. Vercel production promotion remains a separate founder approval gate unless the current conversation contains explicit approval for that exact promotion.
+The founder already approved creation of the versioned Apps Script read bridge and the retry required after the missing-secret failure. The founder approved and completed the material Apps Script access correction through run `34603494366`. The bridge is verified and registered. Vercel production promotion remains a separate founder Yes / No gate. Vercel production promotion remains a separate founder approval gate unless the current conversation contains explicit approval for that exact promotion.
