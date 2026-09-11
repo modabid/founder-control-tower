@@ -135,9 +135,11 @@ No-deploy preflight run `34603857231`, attempt 2, completed successfully after t
 - Vercel candidate created: **NO**
 - Vercel production changed: **NO**
 
-The founder approved the `deploy/vercel` production gate on 2026-09-11. Controlled workflow run `34604758053` passed deterministic tests and all secret/registry presence checks, but repeated attempts stopped at Vercel authentication before project linking. Vercel returned `User not found (404)` for the configured `FCT_VERCEL_TOKEN`.
+The founder approved the `deploy/vercel` production gate on 2026-09-11. Controlled workflow run `34604758053` passed deterministic tests and all secret/registry presence checks, but repeated attempts stopped at Vercel authentication before project linking. Vercel initially returned `User not found (404)`.
 
-Current blocker: replace `FCT_VERCEL_TOKEN` with the exact bearer token issued by Vercel to the account that owns `founder-control-tower`. No candidate was created and production was not changed.
+PR #23 added non-secret validation for the current Vercel `vcp_` token format and pasted whitespace. Run `34635344619` passed those checks but still failed the CLI user lookup. PR #24 removed the forced `--scope` lookup for project-scoped token compatibility and added an exact linked-project-name check. Run `34635843605` then reached Vercel's token validation and returned the conclusive error: the token supplied through `--token` is not valid.
+
+Current blocker: create a fresh Vercel access token and copy the one-time bearer value shown immediately after creation into GitHub Actions secret `FCT_VERCEL_TOKEN`. A token name, ID, visible prefix/suffix or independently generated random value is not valid. No candidate was created and production was not changed.
 
 ## No-New-Billing Web Read Path — VERIFIED / REGISTERED
 
