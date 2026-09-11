@@ -1,5 +1,19 @@
 # Changelog
 
+## 2026-09-11 — Vercel Production Authentication Blocker
+
+### Verified
+
+- The founder approved the controlled `deploy/vercel` candidate-verification-production-promotion gate.
+- Workflow run `34604758053` repeatedly passed the deterministic regression suite and secret/bridge registry validation.
+- Every attempt stopped at Vercel authentication with `User not found (404)` before the dedicated project could be linked.
+- Candidate deployment, live verification and production promotion were skipped; Vercel production remained unchanged.
+
+### Current Blocker
+
+- `FCT_VERCEL_TOKEN` is non-empty in GitHub Actions but is not accepted by Vercel as an account bearer token.
+- Replace it with the exact token value issued by Vercel to the account that owns `founder-control-tower`; do not use the independently generated founder web access token.
+
 ## 2026-09-11 — Safe Apps Script Bridge Diagnostics
 
 ### Changed
