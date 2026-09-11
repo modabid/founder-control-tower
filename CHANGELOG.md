@@ -14,6 +14,7 @@
 - Diagnostic run `34585449467` passed the full deterministic suite, then received HTTP `401`, content type `text/html`, no redirect and fingerprint `GOOGLE_RESOURCE_UNAVAILABLE` from the existing deployed endpoint.
 - The failure occurs at Google's access/resource layer before the expected `doPost()` JSON contract; no response body, token or workbook data was logged.
 - The diagnostic run performed no Apps Script push or versioned deployment.
+- After the founder saved the missing Script Property token, attempt 2 of the same no-deploy run returned the identical Google `401` access/resource fingerprint, confirming the request is blocked before token validation executes.
 
 ### Deployment Boundary
 

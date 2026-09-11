@@ -181,6 +181,8 @@ A no-deploy diagnostic workflow was merged in PR #13 at SHA `5ac8fc958b26f804fda
 - fingerprint: **GOOGLE_RESOURCE_UNAVAILABLE**
 - deterministic regression suite before the probe: **PASS**
 
+After the founder confirmed that `FCT_READ_BRIDGE_TOKEN` had now been saved in Apps Script Script Properties, the same no-deploy diagnostic was rerun as attempt 2 of run `34585449467`. It returned the identical `401` / `text/html` / no-redirect / `GOOGLE_RESOURCE_UNAVAILABLE` result. Script Properties are read only after Apps Script execution begins, so this confirms the saved token is not the remaining blocker; Google's web-app access/resource layer is rejecting the request first.
+
 This proves the request is being rejected by Google's web-app access/resource layer before the expected bridge JSON contract is returned. It does **not** prove that `doPost()` is broken. Correcting the Google-side web-app access/deployment configuration requires a material versioned production redeploy and therefore a new founder Yes / No approval.
 
 Because verification failed:
