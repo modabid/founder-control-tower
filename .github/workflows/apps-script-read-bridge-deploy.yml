@@ -67,7 +67,17 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npx -y "@google/clasp@$CLASP_VERSION" -A "$RUNNER_TEMP/.clasprc.json" push
+          npx -y "@google/clasp@$CLASP_VERSION" -A "$RUNNER_TEMP/.clasprc.json" push --force
+
+      - name: Verify remote anonymous-access manifest before deployment
+        working-directory: apps-script/live
+        shell: bash
+        run: |
+          set -euo pipefail
+          npx -y "@google/clasp@$CLASP_VERSION" -A "$RUNNER_TEMP/.clasprc.json" pull
+          node -e "const fs=require('fs');const p='appsscript.json';const v=JSON.parse(fs.readFileSync(p,'utf8'));fs.writeFileSync(p,JSON.stringify(v,null,2)+'\\n')"
+          jq -e '.webapp.executeAs == "USER_DEPLOYING" and .webapp.access == "ANYONE_ANONYMOUS"' appsscript.json >/dev/null
+          git diff --exit-code -- .
 
       - name: Create or update versioned read bridge deployment
         id: deploy
@@ -95,6 +105,16 @@ jobs:
           echo "url=$BRIDGE_URL" >> "$GITHUB_OUTPUT"
           echo "Versioned read bridge deployment created/updated."
 
+      - name: Verify deployed anonymous-access metadata
+        env:
+          CLASP_AUTH_FILE: ${{ runner.temp }}/.clasprc.json
+          FCT_DEPLOYMENT_ID: ${{ steps.deploy.outputs.deployment_id }}
+        run: |
+          set -euo pipefail
+          OUTPUT="$(node scripts/inspect-apps-script-deployment.cjs)"
+          printf '%s\n' "$OUTPUT"
+          printf '%s\n' "$OUTPUT" | grep -F 'type=WEB_APP access=ANYONE_ANONYMOUS execute_as=USER_DEPLOYING url_host=script.google.com' >/dev/null
+
       - name: Verify token-gated read-only bridge
         env:
           BRIDGE_URL: ${{ steps.deploy.outputs.url }}
@@ -106,6 +126,7 @@ jobs:
         run: |
           set -euo pipefail
           npx -y "@google/clasp@$CLASP_VERSION" -A "$RUNNER_TEMP/.clasprc.json" pull
+          node -e "const fs=require('fs');const p='appsscript.json';const v=JSON.parse(fs.readFileSync(p,'utf8'));fs.writeFileSync(p,JSON.stringify(v,null,2)+'\\n')"
           rm -f .clasp.json
           git diff --exit-code -- .
 
