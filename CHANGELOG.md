@@ -27,6 +27,7 @@
 - Pull-back source parity passed; writes, external actions and AI calls remained zero.
 - Registered the verified deployment in `config/apps-script-read-bridge.json`.
 - Added a no-deploy Vercel readiness preflight to verify required GitHub secrets and bridge registry consistency before the separate production promotion gate.
+- Preflight run `34603857231` passed deterministic tests and stopped before any Vercel action because `FCT_WEB_ACCESS_TOKEN` is not configured.
 
 ### Deployment Boundary
 
