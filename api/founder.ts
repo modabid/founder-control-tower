@@ -1,10 +1,6 @@
 import { createFounderReadApi } from '../packages/api/src/founder-read-api.ts';
 import { createFounderBearerAuthorizer } from '../packages/api/src/bearer-auth.ts';
-import { GoogleSheetsRestReader } from '../packages/data/src/google-sheets-rest.ts';
-import { readGoogleServiceAccountRuntimeCredentials } from '../packages/data/src/google-service-account-env.ts';
-import { createGoogleServiceAccountTokenProvider } from '../packages/data/src/google-service-account-token.ts';
-
-const DEFAULT_SPREADSHEET_ID = '1H0NnKfTBP-772JLzTV0oU1CCfWYPIIfUa33tpuWDcjU';
+import { AppsScriptBridgeReader } from '../packages/data/src/apps-script-read-bridge.ts';
 
 type FounderApiHandler = ReturnType<typeof createFounderReadApi>;
 let cachedApi: FounderApiHandler | null = null;
@@ -18,16 +14,15 @@ function requiredEnv(name: string): string {
 function getFounderApi(): FounderApiHandler {
   if (cachedApi) return cachedApi;
 
-  const googleCredentials = readGoogleServiceAccountRuntimeCredentials(process.env);
+  const bridgeUrl = requiredEnv('FCT_APPS_SCRIPT_READ_URL');
+  const bridgeToken = requiredEnv('FCT_APPS_SCRIPT_READ_TOKEN');
   const founderAccessToken = requiredEnv('FCT_WEB_ACCESS_TOKEN');
-  const spreadsheetId = String(process.env.FCT_SPREADSHEET_ID || DEFAULT_SPREADSHEET_ID).trim();
 
-  const getAccessToken = createGoogleServiceAccountTokenProvider({
-    clientEmail: googleCredentials.clientEmail,
-    privateKey: googleCredentials.privateKey
+  const reader = new AppsScriptBridgeReader({
+    endpointUrl: bridgeUrl,
+    token: bridgeToken
   });
 
-  const reader = new GoogleSheetsRestReader(spreadsheetId, getAccessToken);
   cachedApi = createFounderReadApi({
     reader,
     authorize: createFounderBearerAuthorizer(founderAccessToken),
