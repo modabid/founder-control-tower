@@ -57,7 +57,7 @@ Phase 2 uses the existing `ACTION_QUEUE` as a control-plane boundary between ATL
 
 A recommendation may be queued without external effect. Founder approval changes only the queue state; it does not itself execute ads, messages, payments, inventory changes, courier/order changes, purchases, deployments or other commitments.
 
-Founder-modified actions preserve the original row as `SUPERSEDED` and creates a replacement record, keeping the decision trail auditable. V1 reuses the existing 24-column `ACTION_QUEUE` contract and does not add another sheet.
+Founder-modified actions preserve the original row as `SUPERSEDED` and create a replacement record, keeping the decision trail auditable. V1 reuses the existing 24-column `ACTION_QUEUE` contract and does not add another sheet.
 
 ## ADR-009 — Hands-off technical operation with explicit founder gates
 
