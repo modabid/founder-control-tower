@@ -20,6 +20,7 @@ jobs:
       FCT_SCRIPT_ID: 1gquskvwbH06I3ZgDQ28q9uY0U8VdV3X8BwPgdAG6UbOtAGTZLHV47LBL
       CLASP_AUTH_JSON: ${{ secrets.FCT_CLASP_AUTH_JSON }}
       FCT_APPS_SCRIPT_READ_TOKEN: ${{ secrets.FCT_APPS_SCRIPT_READ_TOKEN }}
+      FCT_DEPLOYMENT_ID: AKfycbz5bDORUEqama0PiN2o9JpLewgE_RjmBGYs3tXz0-4Jvtgn7DxCI2bbqxo1MLlxY-0
       BRIDGE_URL: https://script.google.com/macros/s/AKfycbz5bDORUEqama0PiN2o9JpLewgE_RjmBGYs3tXz0-4Jvtgn7DxCI2bbqxo1MLlxY-0/exec
       CLASP_VERSION: 3.4.1
 
@@ -48,7 +49,22 @@ jobs:
             exit 1
           fi
 
+      - name: Prepare private clasp credential
+        shell: bash
+        run: |
+          set -euo pipefail
+          AUTH_FILE="$RUNNER_TEMP/.clasprc.json"
+          node scripts/normalize-clasp-auth.cjs "$AUTH_FILE"
+          jq -e . "$AUTH_FILE" >/dev/null
+
+      - name: Inspect safe deployment access metadata
+        env:
+          CLASP_AUTH_FILE: ${{ runner.temp }}/.clasprc.json
+        run: node scripts/inspect-apps-script-deployment.cjs
+
       - name: Safely diagnose existing deployed endpoint
+        id: verify
+        continue-on-error: true
         run: node scripts/verify-apps-script-bridge.cjs
 
       - name: Pull back and verify source parity
@@ -57,8 +73,6 @@ jobs:
         run: |
           set -euo pipefail
           AUTH_FILE="$RUNNER_TEMP/.clasprc.json"
-          node "$GITHUB_WORKSPACE/scripts/normalize-clasp-auth.cjs" "$AUTH_FILE"
-          jq -e . "$AUTH_FILE" >/dev/null
           cat > .clasp.json <<EOF
           {
             "scriptId": "$FCT_SCRIPT_ID",
@@ -68,6 +82,12 @@ jobs:
           npx -y "@google/clasp@$CLASP_VERSION" -A "$AUTH_FILE" pull
           rm -f .clasp.json
           git diff --exit-code -- .
+
+      - name: Enforce endpoint verification result
+        if: steps.verify.outcome != 'success'
+        run: |
+          echo "Existing Apps Script endpoint verification failed; see safe metadata above."
+          exit 1
 
       - name: Diagnostic summary
         run: |

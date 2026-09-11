@@ -13,6 +13,9 @@ assert.doesNotMatch(deployWorkflow, /jq -e '[\s\S]*\.ok == true/);
 
 assert.match(diagnosticWorkflow, /branches:\s*\n\s*- diagnose\/apps-script-web/);
 assert.match(diagnosticWorkflow, /Safely diagnose existing deployed endpoint/);
+assert.match(diagnosticWorkflow, /Inspect safe deployment access metadata/);
+assert.match(diagnosticWorkflow, /inspect-apps-script-deployment\.cjs/);
+assert.match(diagnosticWorkflow, /continue-on-error: true/);
 assert.match(diagnosticWorkflow, /git diff --exit-code/);
 assert.doesNotMatch(diagnosticWorkflow, /clasp[^\n]* push/);
 assert.doesNotMatch(diagnosticWorkflow, /create-deployment/);
