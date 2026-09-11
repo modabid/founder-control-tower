@@ -20,6 +20,14 @@
 - Confirmed the deployed V3 web-app entry point was `ANYONE`, not `ANYONE_ANONYMOUS`, which requires Google sign-in and explains the pre-`doPost()` 401.
 - Hardened the approved deployment gate to force the reviewed manifest to Apps Script HEAD, pull it back and require anonymous access before creating a version, then verify the deployed entry-point metadata before probing live JSON.
 
+### Verified Bridge V4
+
+- Founder-approved run `34603494366` created deployment version 4 with `WEB_APP / ANYONE_ANONYMOUS / USER_DEPLOYING`.
+- Live verification followed the approved Google redirect and received `200 application/json` with the expected token-gated read-only contract.
+- Pull-back source parity passed; writes, external actions and AI calls remained zero.
+- Registered the verified deployment in `config/apps-script-read-bridge.json`.
+- Added a no-deploy Vercel readiness preflight to verify required GitHub secrets and bridge registry consistency before the separate production promotion gate.
+
 ### Deployment Boundary
 
 - This change does not trust or register the pending deployment.
