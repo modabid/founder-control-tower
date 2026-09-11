@@ -1,5 +1,20 @@
 # Changelog
 
+## 2026-09-11 — Safe Apps Script Bridge Diagnostics
+
+### Changed
+
+- Replaced the live bridge workflow's direct response-body-to-`jq` verification with a fail-closed Node verifier.
+- Added safe HTTP diagnostics limited to status, content type, redirect host and recognized Google/Apps Script error fingerprints.
+- Added a diagnostic-only workflow for the existing untrusted deployment; it cannot push Apps Script source or create/update a deployment.
+- Added deterministic regression coverage proving tokens, redirect query data, workbook values and private response bodies are never logged.
+
+### Deployment Boundary
+
+- This change does not trust or register the pending deployment.
+- The diagnostic workflow targets the already-created deployment only and performs no Apps Script redeploy.
+- `config/apps-script-read-bridge.json` remains empty until live verification passes.
+
 ## 2026-09-11 — Phase 3 No-Billing Apps Script Read Bridge
 
 ### Added
