@@ -8,6 +8,7 @@ const bridgeWorkflow = fs.readFileSync(path.join(root, '.github', 'workflows', '
 const api = fs.readFileSync(path.join(root, 'api', 'founder.ts'), 'utf8');
 const bridgeSource = fs.readFileSync(path.join(root, 'apps-script', 'live', 'FounderReadBridge.js'), 'utf8');
 const manifest = JSON.parse(fs.readFileSync(path.join(root, 'apps-script', 'live', 'appsscript.json'), 'utf8'));
+const tsconfig = JSON.parse(fs.readFileSync(path.join(root, 'tsconfig.json'), 'utf8'));
 
 assert.match(workflow, /branches:\s*\n\s*- deploy\/vercel/);
 assert.doesNotMatch(workflow, /- main\b/);
@@ -53,6 +54,12 @@ assert.match(api, /FCT_APPS_SCRIPT_READ_URL/);
 assert.match(api, /FCT_APPS_SCRIPT_READ_TOKEN/);
 assert.doesNotMatch(api, /FCT_GOOGLE_SERVICE_ACCOUNT/);
 assert.doesNotMatch(api, /FCT_CLASP_AUTH_JSON/);
+assert.match(api, /declare const process/);
+assert.equal(tsconfig.compilerOptions.target, 'ES2022');
+assert.deepEqual(tsconfig.compilerOptions.lib, ['ES2022', 'DOM', 'DOM.Iterable']);
+assert.equal(tsconfig.compilerOptions.moduleResolution, 'Bundler');
+assert.equal(tsconfig.compilerOptions.allowImportingTsExtensions, true);
+assert.equal(tsconfig.compilerOptions.noEmit, true);
 
 assert.match(bridgeWorkflow, /branches:\s*\n\s*- deploy\/apps-script-web/);
 assert.match(bridgeWorkflow, /FCT_CLASP_AUTH_JSON/);
