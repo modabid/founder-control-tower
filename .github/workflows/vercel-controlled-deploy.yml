@@ -76,16 +76,33 @@ jobs:
           esac
           echo "FCT_APPS_SCRIPT_READ_URL=$BRIDGE_URL" >> "$GITHUB_ENV"
 
-      - name: Link dedicated Founder Control Tower project
+      - name: Resolve dedicated Founder Control Tower project
         shell: bash
         run: |
           set -euo pipefail
-          npx -y "vercel@$VERCEL_CLI_VERSION" link --yes --project "$VERCEL_PROJECT" --token "$VERCEL_TOKEN"
-          LINKED_PROJECT="$(jq -r '.projectName // ""' .vercel/project.json)"
-          if [ "$LINKED_PROJECT" != "$VERCEL_PROJECT" ]; then
-            echo "Vercel linked an unexpected project. Deployment stopped."
+          PROJECT_RESPONSE="$RUNNER_TEMP/vercel-project.json"
+          PROJECT_STATUS="$(curl --retry 3 --retry-delay 2 --retry-all-errors -sS -o "$PROJECT_RESPONSE" -w '%{http_code}' -H "Authorization: Bearer $VERCEL_TOKEN" -H 'Accept: application/json' "https://api.vercel.com/v9/projects/$VERCEL_PROJECT")"
+          if [ "$PROJECT_STATUS" != "200" ]; then
+            echo "Vercel project API returned HTTP $PROJECT_STATUS. Response content was not logged."
             exit 1
           fi
+
+          LINKED_PROJECT="$(jq -er '.name' "$PROJECT_RESPONSE")"
+          PROJECT_ID="$(jq -er '.id' "$PROJECT_RESPONSE")"
+          ORG_ID="$(jq -er '.accountId' "$PROJECT_RESPONSE")"
+          if [ "$LINKED_PROJECT" != "$VERCEL_PROJECT" ]; then
+            echo "Vercel resolved an unexpected project. Deployment stopped."
+            exit 1
+          fi
+          case "$PROJECT_ID" in prj_*) ;; *) echo "Vercel returned an invalid project ID."; exit 1 ;; esac
+          if [ -z "$ORG_ID" ]; then
+            echo "Vercel returned an empty account ID."
+            exit 1
+          fi
+
+          mkdir -p .vercel
+          jq -n --arg orgId "$ORG_ID" --arg projectId "$PROJECT_ID" --arg projectName "$LINKED_PROJECT" '{orgId: $orgId, projectId: $projectId, projectName: $projectName}' > .vercel/project.json
+          echo "Verified the dedicated Founder Control Tower project through the Vercel API."
 
       - name: Create isolated candidate deployment
         id: candidate
