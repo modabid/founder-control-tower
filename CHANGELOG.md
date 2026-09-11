@@ -16,6 +16,7 @@
 - The diagnostic run performed no Apps Script push or versioned deployment.
 - After the founder saved the missing Script Property token, attempt 2 of the same no-deploy run returned the identical Google `401` access/resource fingerprint, confirming the request is blocked before token validation executes.
 - Added a credential-safe Apps Script Deployment API metadata inspector so the next no-deploy diagnostic can report only the deployed entry-point type, access mode, execution identity, manifest name/version and URL host.
+- Hardened the inspector to refresh clasp credentials when a stored access token has no trustworthy expiry timestamp, avoiding false metadata `401` results from stale OAuth tokens.
 
 ### Deployment Boundary
 

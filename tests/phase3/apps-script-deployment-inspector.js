@@ -21,6 +21,19 @@ const {
   });
   assert.equal(await accessTokenFor(current, async () => { throw new Error('must not refresh'); }), 'PRIVATE_ACCESS_TOKEN');
 
+  let noExpiryRefreshed = false;
+  const noExpiryToken = await accessTokenFor({
+    access_token: 'STALE_PRIVATE_ACCESS_TOKEN',
+    refresh_token: 'PRIVATE_REFRESH_TOKEN',
+    client_id: 'PRIVATE_CLIENT_ID',
+    client_secret: 'PRIVATE_CLIENT_SECRET'
+  }, async () => {
+    noExpiryRefreshed = true;
+    return { ok: true, async text() { return JSON.stringify({ access_token: 'FRESH_PRIVATE_ACCESS_TOKEN' }); } };
+  });
+  assert.equal(noExpiryRefreshed, true);
+  assert.equal(noExpiryToken, 'FRESH_PRIVATE_ACCESS_TOKEN');
+
   const entries = safeEntryPoints({
     entryPoints: [{
       entryPointType: 'WEB_APP',
