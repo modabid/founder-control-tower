@@ -2,6 +2,10 @@ import { createFounderReadApi } from '../packages/api/src/founder-read-api.ts';
 import { createFounderBearerAuthorizer } from '../packages/api/src/bearer-auth.ts';
 import { AppsScriptBridgeReader } from '../packages/data/src/apps-script-read-bridge.ts';
 
+declare const process: {
+  env: Record<string, string | undefined>;
+};
+
 type FounderApiHandler = ReturnType<typeof createFounderReadApi>;
 let cachedApi: FounderApiHandler | null = null;
 
