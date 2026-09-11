@@ -1,0 +1,64 @@
+name: Vercel Production Readiness Preflight
+
+on:
+  push:
+    branches:
+      - verify/vercel-production-readiness
+
+permissions:
+  contents: read
+
+jobs:
+  validate-readiness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VERCEL_TOKEN: ${{ secrets.FCT_VERCEL_TOKEN }}
+      FCT_APPS_SCRIPT_READ_TOKEN: ${{ secrets.FCT_APPS_SCRIPT_READ_TOKEN }}
+      FCT_WEB_ACCESS_TOKEN: ${{ secrets.FCT_WEB_ACCESS_TOKEN }}
+
+    steps:
+      - name: Checkout verified source
+        uses: actions/checkout@v4
+
+      - name: Setup Node 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run deterministic regression suite
+        run: npm test
+
+      - name: Validate secrets and verified bridge registry
+        shell: bash
+        run: |
+          set -euo pipefail
+          for name in VERCEL_TOKEN FCT_APPS_SCRIPT_READ_TOKEN FCT_WEB_ACCESS_TOKEN; do
+            if [ -z "${!name:-}" ]; then
+              echo "Required GitHub Actions secret for $name is not configured."
+              exit 1
+            fi
+          done
+          if [ "${#FCT_APPS_SCRIPT_READ_TOKEN}" -lt 32 ]; then
+            echo "FCT_APPS_SCRIPT_READ_TOKEN must be at least 32 characters."
+            exit 1
+          fi
+          if [ "${#FCT_WEB_ACCESS_TOKEN}" -lt 24 ]; then
+            echo "FCT_WEB_ACCESS_TOKEN must be at least 24 characters."
+            exit 1
+          fi
+
+          DEPLOYMENT_ID="$(jq -r '.deploymentId // ""' config/apps-script-read-bridge.json)"
+          BRIDGE_URL="$(jq -r '.deploymentUrl // ""' config/apps-script-read-bridge.json)"
+          if ! [[ "$DEPLOYMENT_ID" =~ ^AK[A-Za-z0-9_-]{20,}$ ]]; then
+            echo "Verified Apps Script deployment ID is not registered."
+            exit 1
+          fi
+          EXPECTED_URL="https://script.google.com/macros/s/$DEPLOYMENT_ID/exec"
+          if [ "$BRIDGE_URL" != "$EXPECTED_URL" ]; then
+            echo "Verified Apps Script deployment URL does not match its deployment ID."
+            exit 1
+          fi
+
+          echo "Vercel production secrets and verified bridge registry preflight PASS."
+          echo "No Vercel deployment or production promotion was performed."
