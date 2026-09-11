@@ -123,6 +123,20 @@ Founder approved and a **separate** Vercel project was created:
 
 `FCT_VERCEL_TOKEN` has been configured by the founder as a private GitHub Actions secret.
 
+### Vercel Readiness Preflight
+
+No-deploy preflight run `34603857231` ran after the verified Apps Script bridge was registered:
+
+- full deterministic regression suite: **PASS**
+- registered bridge ID/URL consistency: available to the gate
+- `FCT_VERCEL_TOKEN`: configured
+- `FCT_APPS_SCRIPT_READ_TOKEN`: configured
+- `FCT_WEB_ACCESS_TOKEN`: **MISSING**
+- Vercel candidate created: **NO**
+- Vercel production changed: **NO**
+
+Current blocker: the founder must create the private GitHub Actions secret `FCT_WEB_ACCESS_TOKEN` with at least 24 high-entropy characters. After it is saved, rerun the same no-deploy preflight.
+
 ## No-New-Billing Web Read Path — VERIFIED / REGISTERED
 
 The founder declined adding a Google Cloud payment method solely for a new service account. ADR-010 therefore uses a token-gated Apps Script read bridge instead.
@@ -215,7 +229,7 @@ Because verification failed:
 
 Before live founder production can be marked READY:
 
-1. verify `FCT_WEB_ACCESS_TOKEN` and all production secrets through the no-deploy Vercel readiness preflight;
+1. founder configures missing `FCT_WEB_ACCESS_TOKEN` (minimum 24 high-entropy characters), then rerun the no-deploy Vercel readiness preflight;
 2. obtain the separate founder Yes / No approval for Vercel production promotion;
 3. run `deploy/vercel` and require candidate founder auth, GET-only API, live bridge read, no-store and zero-side-effect checks before promotion;
 4. independently verify the promoted production deployment;
