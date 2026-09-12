@@ -104,6 +104,21 @@ jobs:
           jq -n --arg orgId "$ORG_ID" --arg projectId "$PROJECT_ID" --arg projectName "$LINKED_PROJECT" '{orgId: $orgId, projectId: $projectId, projectName: $projectName}' > .vercel/project.json
           echo "Verified the dedicated Founder Control Tower project through the Vercel API."
 
+      - name: Bundle Founder API into isolated function artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE_DIR="$RUNNER_TEMP/founder-api-bundle"
+          npx -y @vercel/ncc@0.38.4 build api/founder.ts --out "$BUNDLE_DIR" --minify --no-cache
+          test -s "$BUNDLE_DIR/index.js"
+          if grep -Eq "require\\(['\"]\\.\\./packages|from ['\"]\\.\\./packages" "$BUNDLE_DIR/index.js"; then
+            echo "Founder API bundle retained a repository-relative runtime import."
+            exit 1
+          fi
+          cp "$BUNDLE_DIR/index.js" api/founder.js
+          rm api/founder.ts
+          echo "Founder API bundled as one isolated JavaScript function artifact."
+
       - name: Create isolated candidate deployment
         id: candidate
         shell: bash
