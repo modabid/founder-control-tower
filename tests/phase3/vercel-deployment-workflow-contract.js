@@ -34,6 +34,7 @@ assert.match(workflow, /Vercel resolved an unexpected project/);
 assert.match(workflow, /\.vercel\/project\.json/);
 assert.match(workflow, /Bundle Founder API into isolated function artifact/);
 assert.match(workflow, /@vercel\/ncc@0\.38\.4 build api\/founder\.ts/);
+assert.match(workflow, /--transpile-only/);
 assert.match(workflow, /cp "\$BUNDLE_DIR\/index\.js" api\/founder\.js/);
 assert.match(workflow, /rm api\/founder\.ts/);
 assert.match(workflow, /Create isolated candidate deployment/);
