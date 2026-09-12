@@ -52,6 +52,9 @@ assert.match(workflow, /\/v1\/projects\/\$PROJECT_ID\/deployments\/\$DEPLOYMENT_
 assert.match(workflow, /Diagnostic API replay HTTP status/);
 assert.match(workflow, /Vercel runtime log stream HTTP status/);
 assert.match(workflow, /Safe runtime diagnostic/);
+assert.match(workflow, /MISSING_FOUNDER_READ_API/);
+assert.match(workflow, /MISSING_APPS_SCRIPT_READER/);
+assert.match(workflow, /MISSING_DOMAIN_CORE/);
 assert.match(workflow, /TYPESCRIPT_EXTENSION/);
 assert.match(workflow, /MODULE_RESOLUTION/);
 assert.match(workflow, /MODULE_EXPORT_MISMATCH/);
