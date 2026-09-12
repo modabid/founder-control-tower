@@ -119,6 +119,8 @@ jobs:
           echo "Candidate built; production traffic is unchanged."
 
       - name: Verify protected candidate read-only contract
+        id: verify
+        continue-on-error: true
         shell: bash
         env:
           CANDIDATE_URL: ${{ steps.candidate.outputs.url }}
@@ -172,6 +174,67 @@ jobs:
           jq -e '.ok == true and .data.status == "SUCCESS" and .data.contractVersion == "1.0" and .data.provenance.source == "GOOGLE_SHEETS_READ_ONLY" and .data.provenance.writesMade == 0 and .data.provenance.externalActionsExecuted == 0 and .data.provenance.aiCallsMade == 0' "$RUNNER_TEMP/founder.json" >/dev/null
           grep -qi '^cache-control:.*no-store' "$RUNNER_TEMP/founder.headers"
           grep -qi '^vercel-cdn-cache-control:.*no-store' "$RUNNER_TEMP/founder.headers"
+
+      - name: Safely classify failed candidate runtime
+        if: steps.verify.outcome == 'failure'
+        shell: bash
+        env:
+          CANDIDATE_URL: ${{ steps.candidate.outputs.url }}
+        run: |
+          set -euo pipefail
+          PROJECT_ID="$(jq -er '.projectId' .vercel/project.json)"
+          ORG_ID="$(jq -er '.orgId' .vercel/project.json)"
+          DEPLOYMENT_HOST="${CANDIDATE_URL#https://}"
+          METADATA_RESPONSE="$RUNNER_TEMP/vercel-deployment-metadata.json"
+          METADATA_STATUS="$(curl --retry 3 --retry-delay 2 --retry-all-errors --silent --show-error --output "$METADATA_RESPONSE" --write-out '%{http_code}' -H "Authorization: Bearer $VERCEL_TOKEN" -H 'Accept: application/json' "https://api.vercel.com/v13/deployments/$DEPLOYMENT_HOST?teamId=$ORG_ID")"
+          echo "Vercel deployment metadata HTTP status: $METADATA_STATUS"
+          if [ "$METADATA_STATUS" != "200" ]; then
+            echo "Safe runtime diagnostic: METADATA_UNAVAILABLE"
+            exit 0
+          fi
+
+          DEPLOYMENT_ID="$(jq -er '.id' "$METADATA_RESPONSE")"
+          case "$DEPLOYMENT_ID" in dpl_*) ;; *) echo "Safe runtime diagnostic: INVALID_DEPLOYMENT_ID"; exit 0 ;; esac
+          START_MS="$(( $(date +%s%3N) - 600000 ))"
+          END_MS="$(date +%s%3N)"
+          LOG_RESPONSE="$RUNNER_TEMP/vercel-runtime-logs.json"
+          LOG_STATUS="000"
+          LOG_COUNT="0"
+          for attempt in 1 2 3; do
+            LOG_STATUS="$(curl --retry 2 --retry-delay 2 --retry-all-errors --silent --show-error --get --output "$LOG_RESPONSE" --write-out '%{http_code}' -H "Authorization: Bearer $VERCEL_TOKEN" -H 'Accept: application/json' --data-urlencode "projectId=$PROJECT_ID" --data-urlencode "ownerId=$ORG_ID" --data-urlencode "deploymentId=$DEPLOYMENT_ID" --data-urlencode "environment=preview" --data-urlencode "statusCode=500" --data-urlencode "startDate=$START_MS" --data-urlencode "endDate=$END_MS" --data-urlencode "page=0" "https://vercel.com/api/logs/request-logs")"
+            if [ "$LOG_STATUS" = "200" ]; then
+              LOG_COUNT="$(jq -r '(.rows // []) | length' "$LOG_RESPONSE" 2>/dev/null || printf '0')"
+              if [ "$LOG_COUNT" -gt 0 ]; then break; fi
+            fi
+            sleep 3
+          done
+          echo "Vercel runtime log API HTTP status: $LOG_STATUS"
+          if [ "$LOG_STATUS" != "200" ]; then
+            echo "Safe runtime diagnostic: LOG_API_UNAVAILABLE"
+            exit 0
+          fi
+
+          RUNTIME_CLASS="$(jq -r '
+            [(.rows // [])[]?.logs[]?.message? // empty] | join("\n") |
+            if test("Cannot find module|ERR_MODULE_NOT_FOUND|Module not found"; "i") then "MODULE_RESOLUTION"
+            elif test("does not provide an export|Cannot use import statement|Unexpected token|SyntaxError"; "i") then "MODULE_LOAD"
+            elif test("handler.*not.*function|No exports found|invalid.*export|__vc__handler__"; "i") then "FUNCTION_ENTRYPOINT"
+            elif test("process is not defined|Response is not defined|Request is not defined|ReferenceError"; "i") then "RUNTIME_GLOBAL"
+            elif test("FUNCTION_INVOCATION_FAILED|Runtime exited|Task timed out|Unhandled"; "i") then "FUNCTION_INVOCATION"
+            elif length == 0 then "NO_LOG_MESSAGE"
+            else "UNCLASSIFIED_RUNTIME_ERROR"
+            end
+          ' "$LOG_RESPONSE")"
+          echo "Vercel runtime error rows: $LOG_COUNT"
+          echo "Safe runtime diagnostic: $RUNTIME_CLASS"
+          echo "Runtime response and log contents were not logged."
+
+      - name: Stop before production when verification fails
+        if: steps.verify.outcome == 'failure'
+        shell: bash
+        run: |
+          echo "Candidate verification failed. Production promotion remains blocked."
+          exit 1
 
       - name: Promote verified candidate to production
         shell: bash
