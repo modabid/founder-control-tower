@@ -109,7 +109,7 @@ jobs:
         run: |
           set -euo pipefail
           BUNDLE_DIR="$RUNNER_TEMP/founder-api-bundle"
-          npx -y @vercel/ncc@0.38.4 build api/founder.ts --out "$BUNDLE_DIR" --minify --no-cache
+          npx -y @vercel/ncc@0.38.4 build api/founder.ts --out "$BUNDLE_DIR" --minify --no-cache --transpile-only
           test -s "$BUNDLE_DIR/index.js"
           if grep -Eq "require\\(['\"]\\.\\./packages|from ['\"]\\.\\./packages" "$BUNDLE_DIR/index.js"; then
             echo "Founder API bundle retained a repository-relative runtime import."
