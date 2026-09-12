@@ -90,7 +90,8 @@ assert.doesNotMatch(api, /FCT_CLASP_AUTH_JSON/);
 assert.match(api, /declare const process/);
 assert.equal(tsconfig.compilerOptions.target, 'ES2022');
 assert.deepEqual(tsconfig.compilerOptions.lib, ['ES2022', 'DOM', 'DOM.Iterable']);
-assert.equal(tsconfig.compilerOptions.moduleResolution, 'Bundler');
+assert.equal(tsconfig.compilerOptions.module, 'Node16');
+assert.equal(tsconfig.compilerOptions.moduleResolution, 'Node16');
 assert.equal(tsconfig.compilerOptions.allowImportingTsExtensions, true);
 assert.equal(tsconfig.compilerOptions.noEmit, true);
 
