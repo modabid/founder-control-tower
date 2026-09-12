@@ -68,7 +68,8 @@ assert.doesNotMatch(apiRoute, /FCT_CLASP_AUTH_JSON/);
 assert.match(buildScript, /index\.html/);
 assert.doesNotMatch(buildScript, /mock-founder-data\.js/);
 assert.equal(vercelConfig.outputDirectory, 'dist');
-assert.equal(vercelConfig.functions['api/founder.ts'].maxDuration, 20);
+assert.equal(vercelConfig.functions['api/founder.js'].maxDuration, 20);
+assert.equal(vercelConfig.functions['api/founder.ts'], undefined);
 
 const csp = vercelConfig.headers[0].headers.find((item: { key: string; value: string }) => item.key === 'Content-Security-Policy');
 assert.ok(csp);
