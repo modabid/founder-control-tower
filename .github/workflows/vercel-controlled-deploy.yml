@@ -195,27 +195,28 @@ jobs:
 
           DEPLOYMENT_ID="$(jq -er '.id' "$METADATA_RESPONSE")"
           case "$DEPLOYMENT_ID" in dpl_*) ;; *) echo "Safe runtime diagnostic: INVALID_DEPLOYMENT_ID"; exit 0 ;; esac
-          START_MS="$(( $(date +%s%3N) - 600000 ))"
-          END_MS="$(date +%s%3N)"
-          LOG_RESPONSE="$RUNNER_TEMP/vercel-runtime-logs.json"
-          LOG_STATUS="000"
-          LOG_COUNT="0"
-          for attempt in 1 2 3; do
-            LOG_STATUS="$(curl --retry 2 --retry-delay 2 --retry-all-errors --silent --show-error --get --output "$LOG_RESPONSE" --write-out '%{http_code}' -H "Authorization: Bearer $VERCEL_TOKEN" -H 'Accept: application/json' --data-urlencode "projectId=$PROJECT_ID" --data-urlencode "ownerId=$ORG_ID" --data-urlencode "deploymentId=$DEPLOYMENT_ID" --data-urlencode "environment=preview" --data-urlencode "statusCode=500" --data-urlencode "startDate=$START_MS" --data-urlencode "endDate=$END_MS" --data-urlencode "page=0" "https://vercel.com/api/logs/request-logs")"
-            if [ "$LOG_STATUS" = "200" ]; then
-              LOG_COUNT="$(jq -r '(.rows // []) | length' "$LOG_RESPONSE" 2>/dev/null || printf '0')"
-              if [ "$LOG_COUNT" -gt 0 ]; then break; fi
-            fi
-            sleep 3
-          done
-          echo "Vercel runtime log API HTTP status: $LOG_STATUS"
+          BYPASS_TOKEN="$(jq -er '.protectionBypass | to_entries[] | select(.value.scope == "automation-bypass") | .key' "$RUNNER_TEMP/vercel-protection-bypass.json" | head -n 1)"
+          echo "::add-mask::$BYPASS_TOKEN"
+
+          LOG_RESPONSE="$RUNNER_TEMP/vercel-runtime-logs.ndjson"
+          LOG_HEADERS="$RUNNER_TEMP/vercel-runtime-logs.headers"
+          curl --max-time 15 --silent --show-error --dump-header "$LOG_HEADERS" --output "$LOG_RESPONSE" -H "Authorization: Bearer $VERCEL_TOKEN" -H 'Accept: application/x-ndjson' "https://api.vercel.com/v1/projects/$PROJECT_ID/deployments/$DEPLOYMENT_ID/runtime-logs?format=lines&teamId=$ORG_ID" >/dev/null 2>&1 &
+          LOG_PID="$!"
+          sleep 2
+          REPLAY_CODE="$(curl "$CANDIDATE_URL/api/founder" --silent --show-error --output "$RUNNER_TEMP/runtime-diagnostic-replay.json" --write-out '%{http_code}' -H "x-vercel-protection-bypass: $BYPASS_TOKEN")"
+          echo "Diagnostic API replay HTTP status: $REPLAY_CODE"
+          wait "$LOG_PID" || true
+
+          LOG_STATUS="$(awk 'toupper($1) ~ /^HTTP\// { code=$2 } END { print code + 0 }' "$LOG_HEADERS" 2>/dev/null || printf '0')"
+          echo "Vercel runtime log stream HTTP status: $LOG_STATUS"
           if [ "$LOG_STATUS" != "200" ]; then
-            echo "Safe runtime diagnostic: LOG_API_UNAVAILABLE"
+            echo "Safe runtime diagnostic: LOG_STREAM_UNAVAILABLE"
             exit 0
           fi
 
-          RUNTIME_CLASS="$(jq -r '
-            [(.rows // [])[]?.logs[]?.message? // empty] | join("\n") |
+          RUNTIME_CLASS="$(jq -Rrs '
+            split("\n") | map(select(length > 0) | fromjson?) |
+            [.[].message? // empty] | join("\n") |
             if test("Cannot find module|ERR_MODULE_NOT_FOUND|Module not found"; "i") then "MODULE_RESOLUTION"
             elif test("does not provide an export|Cannot use import statement|Unexpected token|SyntaxError"; "i") then "MODULE_LOAD"
             elif test("handler.*not.*function|No exports found|invalid.*export|__vc__handler__"; "i") then "FUNCTION_ENTRYPOINT"
@@ -225,7 +226,8 @@ jobs:
             else "UNCLASSIFIED_RUNTIME_ERROR"
             end
           ' "$LOG_RESPONSE")"
-          echo "Vercel runtime error rows: $LOG_COUNT"
+          LOG_COUNT="$(jq -Rrs 'split("\n") | map(select(length > 0) | fromjson?) | length' "$LOG_RESPONSE")"
+          echo "Vercel runtime log rows: $LOG_COUNT"
           echo "Safe runtime diagnostic: $RUNTIME_CLASS"
           echo "Runtime response and log contents were not logged."
 
