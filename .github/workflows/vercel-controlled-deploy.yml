@@ -217,8 +217,12 @@ jobs:
           RUNTIME_CLASS="$(jq -Rrs '
             split("\n") | map(select(length > 0) | fromjson?) |
             [.[].message? // empty] | join("\n") |
-            if test("Cannot find module|ERR_MODULE_NOT_FOUND|Module not found"; "i") then "MODULE_RESOLUTION"
-            elif test("does not provide an export|Cannot use import statement|Unexpected token|SyntaxError"; "i") then "MODULE_LOAD"
+            if test("Unknown file extension|ERR_UNKNOWN_FILE_EXTENSION"; "i") then "TYPESCRIPT_EXTENSION"
+            elif test("Cannot find module|ERR_MODULE_NOT_FOUND|Module not found"; "i") then "MODULE_RESOLUTION"
+            elif test("does not provide an export"; "i") then "MODULE_EXPORT_MISMATCH"
+            elif test("Cannot use import statement"; "i") then "CJS_ESM_IMPORT_MISMATCH"
+            elif test("Unexpected token"; "i") then "UNEXPECTED_TOKEN"
+            elif test("SyntaxError"; "i") then "SYNTAX_ERROR"
             elif test("handler.*not.*function|No exports found|invalid.*export|__vc__handler__"; "i") then "FUNCTION_ENTRYPOINT"
             elif test("process is not defined|Response is not defined|Request is not defined|ReferenceError"; "i") then "RUNTIME_GLOBAL"
             elif test("FUNCTION_INVOCATION_FAILED|Runtime exited|Task timed out|Unhandled"; "i") then "FUNCTION_INVOCATION"
