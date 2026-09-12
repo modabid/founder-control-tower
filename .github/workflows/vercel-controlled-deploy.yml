@@ -118,7 +118,7 @@ jobs:
           echo "url=$CANDIDATE_URL" >> "$GITHUB_OUTPUT"
           echo "Candidate built; production traffic is unchanged."
 
-      - name: Verify candidate read-only contract
+      - name: Verify protected candidate read-only contract
         shell: bash
         env:
           CANDIDATE_URL: ${{ steps.candidate.outputs.url }}
@@ -129,19 +129,44 @@ jobs:
             *) echo "Refusing to send founder credentials to an unexpected host."; exit 1 ;;
           esac
 
-          ROOT_CODE="$(curl --retry 4 --retry-delay 2 --retry-all-errors -sS -o "$RUNNER_TEMP/root.html" -w '%{http_code}' "$CANDIDATE_URL/")"
+          vercel_request() {
+            local path="$1"
+            shift
+            npx -y "vercel@$VERCEL_CLI_VERSION" curl "$path" --deployment "$CANDIDATE_URL" --token "$VERCEL_TOKEN" -- "$@"
+          }
+
+          extract_status() {
+            local result="$1"
+            local status
+            status="$(printf '%s\n' "$result" | grep -Eo 'FCT_HTTP_STATUS:[0-9]{3}' | tail -n 1 | cut -d: -f2 || true)"
+            if [[ ! "$status" =~ ^[0-9]{3}$ ]]; then
+              echo "Candidate request did not return a safe HTTP status marker." >&2
+              return 1
+            fi
+            printf '%s' "$status"
+          }
+
+          ROOT_RESULT="$(vercel_request / --retry 4 --retry-delay 2 --retry-all-errors --silent --show-error --output "$RUNNER_TEMP/root.html" --write-out 'FCT_HTTP_STATUS:%{http_code}')"
+          ROOT_CODE="$(extract_status "$ROOT_RESULT")"
+          echo "Candidate root HTTP status: $ROOT_CODE"
           test "$ROOT_CODE" = "200"
           grep -q 'Founder Control Tower' "$RUNNER_TEMP/root.html"
 
-          UNAUTH_CODE="$(curl -sS -o "$RUNNER_TEMP/unauthorized.json" -w '%{http_code}' "$CANDIDATE_URL/api/founder")"
+          UNAUTH_RESULT="$(vercel_request /api/founder --silent --show-error --output "$RUNNER_TEMP/unauthorized.json" --write-out 'FCT_HTTP_STATUS:%{http_code}')"
+          UNAUTH_CODE="$(extract_status "$UNAUTH_RESULT")"
+          echo "Candidate unauthorized API HTTP status: $UNAUTH_CODE"
           test "$UNAUTH_CODE" = "401"
           jq -e '.ok == false and .error == "UNAUTHORIZED"' "$RUNNER_TEMP/unauthorized.json" >/dev/null
 
-          POST_CODE="$(curl -sS -X POST -o "$RUNNER_TEMP/post.json" -w '%{http_code}' "$CANDIDATE_URL/api/founder")"
+          POST_RESULT="$(vercel_request /api/founder --silent --show-error --request POST --output "$RUNNER_TEMP/post.json" --write-out 'FCT_HTTP_STATUS:%{http_code}')"
+          POST_CODE="$(extract_status "$POST_RESULT")"
+          echo "Candidate POST API HTTP status: $POST_CODE"
           test "$POST_CODE" = "405"
           jq -e '.ok == false and .error == "METHOD_NOT_ALLOWED"' "$RUNNER_TEMP/post.json" >/dev/null
 
-          AUTH_CODE="$(curl --retry 4 --retry-delay 2 --retry-all-errors -sS -D "$RUNNER_TEMP/founder.headers" -o "$RUNNER_TEMP/founder.json" -w '%{http_code}' -H "Authorization: Bearer $FCT_WEB_ACCESS_TOKEN" -H 'Accept: application/json' "$CANDIDATE_URL/api/founder")"
+          AUTH_RESULT="$(vercel_request /api/founder --retry 4 --retry-delay 2 --retry-all-errors --silent --show-error --dump-header "$RUNNER_TEMP/founder.headers" --output "$RUNNER_TEMP/founder.json" --write-out 'FCT_HTTP_STATUS:%{http_code}' --header "Authorization: Bearer $FCT_WEB_ACCESS_TOKEN" --header 'Accept: application/json')"
+          AUTH_CODE="$(extract_status "$AUTH_RESULT")"
+          echo "Candidate authenticated API HTTP status: $AUTH_CODE"
           test "$AUTH_CODE" = "200"
           jq -e '.ok == true and .data.status == "SUCCESS" and .data.contractVersion == "1.0" and .data.provenance.source == "GOOGLE_SHEETS_READ_ONLY" and .data.provenance.writesMade == 0 and .data.provenance.externalActionsExecuted == 0 and .data.provenance.aiCallsMade == 0' "$RUNNER_TEMP/founder.json" >/dev/null
           grep -qi '^cache-control:.*no-store' "$RUNNER_TEMP/founder.headers"
